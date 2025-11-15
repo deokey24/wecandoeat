@@ -7,56 +7,66 @@
 
   <h1 class="text-2xl font-bold mb-6">상품 수정</h1>
 
-  <form method="post" action="/products/{{ product.id }}/edit"
+  <form method="post"
+        action="/products/{{ product.id }}/edit"
+        enctype="multipart/form-data"
         class="bg-white shadow rounded-xl p-6 space-y-4">
 
     <!-- 기본 정보 -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium mb-1">상품명 <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium mb-1">
+          상품명 <span class="text-red-500">*</span>
+        </label>
         <input name="name" required
                value="{{ product.name }}"
-               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+               class="w-full border rounded-lg px-3 py-2 text-sm
+                      focus:outline-none focus:ring focus:ring-blue-200" />
       </div>
 
       <div>
         <label class="block text-sm font-medium mb-1">카테고리</label>
         <select name="category"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200">
-            <option value="">선택하세요</option>
-            <option value="기기"
-                {% if product.category == "기기" %}selected{% endif %}>
-                기기
-            </option>
-            <option value="코일&카트리지"
-                {% if product.category == "코일&카트리지" %}selected{% endif %}>
-                코일&카트리지
-            </option>
-            <option value="액상"
-                {% if product.category == "액상" %}selected{% endif %}>
-                액상
-            </option>
-            <option value="일회용"
-                {% if product.category == "일회용" %}selected{% endif %}>
-                일회용
-            </option>
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring focus:ring-blue-200">
+          <option value="">선택하세요</option>
+          <option value="기기"
+              {% if product.category == "기기" %}selected{% endif %}>
+            기기
+          </option>
+          <option value="코일&카트리지"
+              {% if product.category == "코일&카트리지" %}selected{% endif %}>
+            코일&카트리지
+          </option>
+          <option value="액상"
+              {% if product.category == "액상" %}selected{% endif %}>
+            액상
+          </option>
+          <option value="일회용"
+              {% if product.category == "일회용" %}selected{% endif %}>
+            일회용
+          </option>
         </select>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
-        <label class="block text-sm font-medium mb-1">판매가(원) <span class="text-red-500">*</span></label>
+        <label class="block text-sm font-medium mb-1">
+          판매가(원) <span class="text-red-500">*</span>
+        </label>
         <input name="price" type="number" min="0" required
                value="{{ product.price }}"
-               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+               class="w-full border rounded-lg px-3 py-2 text-sm
+                      focus:outline-none focus:ring focus:ring-blue-200" />
       </div>
 
       <div>
         <label class="block text-sm font-medium mb-1">상품 코드</label>
         <input name="code"
                value="{{ product.code or '' }}"
-               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+               class="w-full border rounded-lg px-3 py-2 text-sm
+                      focus:outline-none focus:ring focus:ring-blue-200"
                placeholder="내부코드 / 바코드 등" />
       </div>
     </div>
@@ -80,21 +90,66 @@
       </label>
     </div>
 
-    <!-- 이미지 / 상세 URL -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+    <!-- 이미지 영역 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+      <!-- 현재 상품 이미지 -->
       <div>
-        <label class="block text-sm font-medium mb-1">이미지 URL</label>
-        <input name="image_url"
-               value="{{ product.image_url or '' }}"
-               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
-               placeholder="예: https://.../image.jpg" />
+        <label class="block text-sm font-medium mb-2">현재 상품 이미지</label>
+        {% if product.image_url %}
+          <div class="border rounded-lg p-2 bg-slate-50 flex items-center justify-center">
+            <img src="{{ product.image_url }}"
+                 alt="상품 이미지"
+                 class="max-h-48 object-contain mx-auto" />
+          </div>
+          <p class="mt-1 text-xs text-slate-500 break-all">
+            {{ product.image_url }}
+          </p>
+        {% else %}
+          <div class="border rounded-lg p-4 bg-slate-50 text-sm text-slate-500">
+            등록된 상품 이미지가 없습니다.
+          </div>
+        {% endif %}
+
+        <div class="mt-3">
+          <label class="block text-sm font-medium mb-1">
+            상품 이미지 변경 (선택)
+          </label>
+          <input type="file" name="product_image" accept="image/*"
+                 class="w-full text-sm" />
+          <p class="mt-1 text-xs text-slate-500">
+            새 이미지를 업로드하면 기존 이미지를 대체합니다.
+          </p>
+        </div>
       </div>
+
+      <!-- 현재 상세 이미지 -->
       <div>
-        <label class="block text-sm font-medium mb-1">상세 페이지 URL</label>
-        <input name="detail_url"
-               value="{{ product.detail_url or '' }}"
-               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
-               placeholder="키오스크에서 웹뷰로 열 상세 설명 페이지" />
+        <label class="block text-sm font-medium mb-2">현재 상세 이미지</label>
+        {% if product.detail_url %}
+          <div class="border rounded-lg p-2 bg-slate-50 flex items-center justify-center">
+            <img src="{{ product.detail_url }}"
+                 alt="상세 이미지"
+                 class="max-h-48 object-contain mx-auto" />
+          </div>
+          <p class="mt-1 text-xs text-slate-500 break-all">
+            {{ product.detail_url }}
+          </p>
+        {% else %}
+          <div class="border rounded-lg p-4 bg-slate-50 text-sm text-slate-500">
+            등록된 상세 이미지가 없습니다.
+          </div>
+        {% endif %}
+
+        <div class="mt-3">
+          <label class="block text-sm font-medium mb-1">
+            상세 이미지 변경 (선택)
+          </label>
+          <input type="file" name="detail_image" accept="image/*"
+                 class="w-full text-sm" />
+          <p class="mt-1 text-xs text-slate-500">
+            새 이미지를 업로드하면 기존 상세 이미지를 대체합니다.
+          </p>
+        </div>
       </div>
     </div>
 
@@ -102,7 +157,8 @@
     <div>
       <label class="block text-sm font-medium mb-1">상품 설명</label>
       <textarea name="description" rows="3"
-                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+                class="w-full border rounded-lg px-3 py-2 text-sm
+                       focus:outline-none focus:ring focus:ring-blue-200"
                 placeholder="간단한 상품 설명을 입력하세요.">{{ product.description or "" }}</textarea>
     </div>
 
@@ -112,11 +168,13 @@
       </div>
       <div class="flex gap-2">
         <a href="/products"
-           class="px-4 py-2 rounded-lg text-sm border border-slate-300 text-slate-700 hover:bg-slate-50">
+           class="px-4 py-2 rounded-lg text-sm border border-slate-300
+                  text-slate-700 hover:bg-slate-50">
           목록으로
         </a>
         <button type="submit"
-                class="px-4 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700">
+                class="px-4 py-2 rounded-lg text-sm bg-blue-600 text-white
+                       hover:bg-blue-700">
           저장하기
         </button>
       </div>

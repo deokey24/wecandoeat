@@ -48,6 +48,8 @@ async def create_product(db: AsyncSession, data: ProductCreate) -> ProductRead:
         code=data.code,
         category=data.category,
         is_adult_only=data.is_adult_only,
+        image_object_key=data.image_object_key,
+        detail_object_key=data.detail_object_key,
         image_url=data.image_url,
         detail_url=data.detail_url,
         description=data.description,
@@ -83,3 +85,16 @@ async def update_product(
     await db.commit()
     await db.refresh(product)
     return ProductRead.model_validate(product)
+
+async def delete_product(db: AsyncSession, product_id: int):
+    result = await db.execute(
+        select(Product).where(Product.id == product_id)
+    )
+    product = result.scalar_one_or_none()
+
+    if not product:
+        return False
+
+    await db.delete(product)
+    await db.commit()
+    return True
