@@ -29,21 +29,7 @@
         {% endif %}
       </p>
     </div>
-
-    <!-- 배치 모드 토글 -->
-    <div class="flex items-center gap-2">
-      <form method="get" action="/kiosks/{{ kiosk.id }}">
-        <input type="hidden" name="mode" value="{{ 'view' if mode == 'edit' else 'edit' }}">
-        <button class="px-3 py-1 text-xs rounded border
-                       {% if mode == 'edit' %}
-                         bg-blue-600 text-white border-blue-600
-                       {% else %}
-                         bg-white text-slate-700 hover:bg-slate-50
-                       {% endif %}">
-          {% if mode == 'edit' %}배치 모드 종료{% else %}배치 모드{% endif %}
-        </button>
-      </form>
-    </div>
+    <!-- 배치 모드 제거: 우측 상단 비워둠 (필요시 다른 버튼 추가 가능) -->
   </div>
 
   <!-- 슬롯 그리드: 층별 카드 -->
@@ -63,102 +49,23 @@
           </div>
         </div>
 
-        <!-- 슬롯 카드 목록 -->
-        <div class="p-4 grid gap-3"
-             style="grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));">
-          {% for s in slots %}
-            <div class="border rounded-lg p-3 flex flex-col gap-2 hover:border-blue-400 transition"
-                 data-slot-id="{{ s.slot_id }}"
-                 data-slot-label="{{ s.label }}"
-                 data-slot-board="{{ s.board_code }}"
-                 data-slot-max="{{ s.max_capacity }}"
-                 data-slot-stock="{{ s.current_stock }}"
-                 data-slot-low="{{ s.low_stock_alarm }}"
-                 data-slot-product-id="{{ s.product_id or '' }}">
-              <!-- 상단: 슬롯 라벨/보드코드 -->
-              <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-slate-700">
-                  {{ s.label }}
-                </div>
-                <div class="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">
-                  {{ s.board_code }}
-                </div>
-              </div>
+        <!-- 슬롯 카드 목록: 5칸 + 5칸 -->
+        <div class="p-4 space-y-3">
 
-              <!-- 상품 썸네일/이름 -->
-              {% if s.product_id %}
-                <div class="flex items-center gap-2">
-                  <div class="w-10 h-10 rounded bg-slate-100 overflow-hidden flex items-center justify-center">
-                    {% if s.image_url %}
-                      <img src="{{ s.image_url }}" alt="{{ s.product_name }}"
-                           class="w-full h-full object-cover" />
-                    {% else %}
-                      <span class="text-[10px] text-slate-400">NO IMG</span>
-                    {% endif %}
-                  </div>
-                  <div class="flex-1">
-                    <div class="text-xs font-medium line-clamp-2">
-                      {{ s.product_name }}
-                    </div>
-                    <div class="text-[11px] text-blue-600 font-semibold">
-                      {{ "{:,}".format(s.price) }}원
-                    </div>
-                  </div>
-                </div>
-              {% else %}
-                <div class="text-xs text-slate-400 italic">
-                  매핑된 상품 없음
-                </div>
-              {% endif %}
+          <!-- 1줄: 앞 5개 -->
+          <div class="grid grid-cols-5 gap-3">
+            {% for s in slots[:5] %}
+              {% include "partials/_kiosk_slot_card.html" %}
+            {% endfor %}
+          </div>
 
-              <!-- 재고 조절 -->
-              <div class="mt-1 flex items-center justify-between">
-                <div class="text-[11px] text-slate-500">
-                  재고
-                </div>
-                <div class="flex items-center gap-1">
-                  <form method="post"
-                        action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/stock">
-                    <input type="hidden" name="action" value="dec" />
-                    <button type="submit"
-                            class="w-6 h-6 flex items-center justify-center rounded border text-xs hover:bg-slate-100">
-                      -
-                    </button>
-                  </form>
-                  <div class="min-w-[2rem] text-center text-sm font-semibold">
-                    {{ s.current_stock }}
-                  </div>
-                  <form method="post"
-                        action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/stock">
-                    <input type="hidden" name="action" value="inc" />
-                    <button type="submit"
-                            class="w-6 h-6 flex items-center justify-center rounded border text-xs hover:bg-slate-100">
-                      +
-                    </button>
-                  </form>
-                </div>
-              </div>
+          <!-- 2줄: 뒤 5개 -->
+          <div class="grid grid-cols-5 gap-3">
+            {% for s in slots[5:10] %}
+              {% include "partials/_kiosk_slot_card.html" %}
+            {% endfor %}
+          </div>
 
-              <!-- 원격배출 / 편집 버튼 영역 -->
-              <div class="mt-2 flex items-center justify-between">
-                {% if mode == 'edit' %}
-                  <button type="button"
-                          class="flex-1 mr-1 text-[11px] px-2 py-1 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 js-open-slot-modal">
-                    {% if s.product_id %}슬롯 편집{% else %}상품 배치{% endif %}
-                  </button>
-                {% else %}
-                  <button type="button"
-                          class="flex-1 mr-1 text-[11px] px-2 py-1 rounded border border-slate-200 text-slate-300 cursor-not-allowed">
-                    슬롯 편집
-                  </button>
-                {% endif %}
-                <button type="button"
-                        class="text-[11px] px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700">
-                  원격배출
-                </button>
-              </div>
-            </div>
-          {% endfor %}
         </div>
       </div>
     {% endfor %}
@@ -241,35 +148,57 @@
   const inputLow = document.getElementById('input_low_stock_alarm');
   const productSelect = document.getElementById('product_select');
 
-  document.querySelectorAll('.js-open-slot-modal').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const card = btn.closest('[data-slot-id]');
-      const slotId = card.dataset.slotId;
-      const label = card.dataset.slotLabel;
-      const board = card.dataset.slotBoard;
-      const max = card.dataset.slotMax || 0;
-      const stock = card.dataset.slotStock || 0;
-      const low = card.dataset.slotLow || 0;
-      const productId = card.dataset.slotProductId;
+  function attachSlotModalHandlers() {
+    document.querySelectorAll('.js-open-slot-modal').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('[data-slot-id]');
+        const slotId = card.dataset.slotId;
+        const label = card.dataset.slotLabel;
+        const board = card.dataset.slotBoard;
+        const max = card.dataset.slotMax || 0;
+        const stock = card.dataset.slotStock || 0;
+        const low = card.dataset.slotLow || 0;
+        const productId = card.dataset.slotProductId;
 
-      slotIdInput.value = slotId;
-      slotInfoLabel.textContent = `${label} (보드코드: ${board})`;
+        slotIdInput.value = slotId;
+        slotInfoLabel.textContent = `${label} (보드코드: ${board})`;
 
-      inputMax.value = max;
-      inputStock.value = stock;
-      inputLow.value = low;
+        inputMax.value = max;
+        inputStock.value = stock;
+        inputLow.value = low;
 
-      if (productId) {
-        productSelect.value = productId;
-      } else {
-        productSelect.selectedIndex = -1;
-      }
+        if (productId) {
+          productSelect.value = productId;
+        } else {
+          productSelect.selectedIndex = -1;
+        }
 
-      slotForm.action = `/kiosks/{{ kiosk.id }}/slots/${slotId}/assign`;
+        slotForm.action = `/kiosks/{{ kiosk.id }}/slots/${slotId}/assign`;
 
-      modal.classList.remove('hidden');
+        modal.classList.remove('hidden');
+      });
     });
-  });
+  }
+
+  function attachSlotClearHandlers() {
+    document.querySelectorAll('.js-slot-clear-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const slotId = btn.dataset.slotId;
+        const ok = confirm('이 슬롯을 비우시겠습니까?');
+        if (!ok) return;
+
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = `/kiosks/{{ kiosk.id }}/slots/${slotId}/clear`;
+
+        document.body.appendChild(form);
+        form.submit();
+      });
+    });
+  }
+
+  attachSlotModalHandlers();
+  attachSlotClearHandlers();
 
   document.querySelectorAll('.js-close-slot-modal').forEach(btn => {
     btn.addEventListener('click', () => {

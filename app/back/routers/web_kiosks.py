@@ -126,6 +126,7 @@ async def kiosk_create(
             status_code=403,
         )
 
+    # 1) 키오스크 생성
     kiosk = Kiosk(
         store_id=store_id,
         name=name,
@@ -134,9 +135,32 @@ async def kiosk_create(
         is_active=True,
     )
     db.add(kiosk)
+    await db.flush()  # kiosk.id 확보
+
+    # 2) 슬롯 자동 생성 (8단 × 10칸)
+    TOTAL_ROWS = 8
+    TOTAL_COLS = 10  # 5칸 + 5칸이지만 DB상 col은 1~10 하나로 가자.
+
+    for row in range(1, TOTAL_ROWS + 1):
+        row_letter = chr(64 + row)  # 1→A, 2→B, ... 8→H
+
+        for col in range(1, TOTAL_COLS + 1):
+            board_code = f"{row_letter}{col:02d}"  # A01 ~ H10
+            slot = VendingSlot(
+                kiosk_id=kiosk.id,
+                row=row,
+                col=col,
+                board_code=board_code,
+                label=f"{row}-{col}",
+                max_capacity=0,
+                is_enabled=True,
+            )
+            db.add(slot)
+
     await db.commit()
 
     return RedirectResponse("/kiosks", status_code=303)
+
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +293,45 @@ async def kiosk_slot_stock_update(
     await db.commit()
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
+
+@router.post("/kiosks/{kiosk_id}/slots/{slot_id}/clear")
+async def kiosk_slot_clear(
+    kiosk_id: int,
+    slot_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+    if current_user.role != 1:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "권한이 없습니다."},
+            status_code=403,
+        )
+
+    # 슬롯 존재 / 소속 키오스크 확인
+    slot = await db.get(VendingSlot, slot_id)
+    if not slot or slot.kiosk_id != kiosk_id:
+        return RedirectResponse(f"/kiosks/{kiosk_id}", status_code=303)
+
+    # 슬롯에 매핑된 상품 레코드 삭제
+    result = await db.execute(
+        select(VendingSlotProduct).where(VendingSlotProduct.slot_id == slot_id)
+    )
+    vsp = result.scalar_one_or_none()
+
+    if vsp:
+        await db.delete(vsp)
+
+    # 옵션: 슬롯 자체 용량/재고 관련 값 초기화
+    slot.max_capacity = 0
+
+    await db.commit()
+
+    return RedirectResponse(f"/kiosks/{kiosk_id}", status_code=303)
+
 
 
 # ---------------------------------------------------------------------------
