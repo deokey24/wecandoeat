@@ -1,14 +1,15 @@
 # app/back/routers/web_kiosks.py
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.back.core.db import get_db
-from app.back.models.kiosk import Kiosk
+from app.back.core.r2_client import upload_image_to_r2
+from app.back.models.kiosk import Kiosk, KioskScreenImage
 from app.back.models.store import Store
 from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.product import Product
@@ -156,6 +157,19 @@ async def kiosk_create(
                 is_enabled=True,
             )
             db.add(slot)
+            
+    default_screensaver_url = (
+        "https://img.wecandoeat.com/kiosk/CHUNCHEON01/screensaver/fbf280035f08418d8b0eb26d40ebc978.png"
+    )
+    
+    default_img = KioskScreenImage(
+        kiosk_id=kiosk.id,
+        image_url=default_screensaver_url,
+        sort_order=1,
+        is_active=True,
+    )
+    db.add(default_img)
+
 
     await db.commit()
 
@@ -241,6 +255,11 @@ async def kiosk_detail_page(
 
     # 상품 목록 (지점별로 나눌 거면 여기서 store_id로 필터)
     products = (await db.execute(select(Product))).scalars().all()
+    
+    screen_images = sorted(
+    kiosk.screen_images,
+    key=lambda x: x.sort_order if x.sort_order is not None else 0,
+    )
 
     return templates.TemplateResponse(
         "kiosk_detail.html",
@@ -251,6 +270,7 @@ async def kiosk_detail_page(
             "layers": sorted_layers,
             "products": products,
             "mode": mode,
+            "screen_images": screen_images,
         },
     )
 
@@ -398,3 +418,88 @@ async def kiosk_slot_assign(
     await db.commit()
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=edit", status_code=303)
+
+@router.post("/kiosks/{kiosk_id}/screensaver/upload")
+async def kiosk_screensaver_upload(
+    kiosk_id: int,
+    request: Request,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+    if current_user.role != 1:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "권한이 없습니다."},
+            status_code=403,
+        )
+
+    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    if not kiosk:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "존재하지 않는 키오스크입니다."},
+            status_code=404,
+        )
+
+    # R2 업로드 (prefix는 자유롭게)
+    image_url = await upload_image_to_r2(file, prefix=f"kiosk/{kiosk.code}/screensaver")
+
+    # sort_order = 현재 최대값 + 1
+    result = await db.execute(
+        select(func.coalesce(func.max(KioskScreenImage.sort_order), 0)).where(
+            KioskScreenImage.kiosk_id == kiosk.id
+        )
+    )
+    max_order = result.scalar_one()
+
+    new_img = KioskScreenImage(
+        kiosk_id=kiosk.id,
+        image_url=image_url,
+        sort_order=max_order + 1,
+        is_active=True,
+    )
+    db.add(new_img)
+    await db.commit()
+
+    return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
+
+@router.post("/kiosks/{kiosk_id}/screensaver/{image_id}/delete")
+async def kiosk_screensaver_delete(
+    kiosk_id: int,
+    image_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+    if current_user.role != 1:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "권한이 없습니다."},
+            status_code=403,
+        )
+
+    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    if not kiosk:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "존재하지 않는 키오스크입니다."},
+            status_code=404,
+        )
+
+    img_result = await db.execute(
+        select(KioskScreenImage).where(
+            KioskScreenImage.id == image_id,
+            KioskScreenImage.kiosk_id == kiosk_id,
+        )
+    )
+    img = img_result.scalar_one_or_none()
+    if img:
+        await db.delete(img)
+        await db.commit()
+
+    return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)

@@ -8,6 +8,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     String,
+    Integer
 )
 from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.orm import relationship
@@ -44,6 +45,12 @@ class Kiosk(Base):
     status_logs = relationship(
         "KioskStatusLog", back_populates="kiosk", cascade="all, delete-orphan"
     )
+    screen_images = relationship(
+    "KioskScreenImage",
+    back_populates="kiosk",
+    cascade="all, delete-orphan",
+    order_by="KioskScreenImage.sort_order",
+    )
 
 
 
@@ -59,3 +66,23 @@ class KioskStatusLog(Base):
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
     kiosk = relationship("Kiosk", back_populates="status_logs")
+
+# ★ 새로 추가
+class KioskScreenImage(Base):
+    __tablename__ = "kiosk_screen_images"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    kiosk_id = Column(BigInteger, ForeignKey("kiosks.id", ondelete="CASCADE"), nullable=False)
+
+    # R2에 업로드된 보호화면 이미지 URL
+    image_url = Column(String(500), nullable=False)
+
+    # 표시 순서 (작은 숫자일수록 먼저)
+    sort_order = Column(Integer, nullable=False, default=0)
+
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
+
+    kiosk = relationship("Kiosk", back_populates="screen_images")

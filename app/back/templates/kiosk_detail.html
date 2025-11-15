@@ -70,6 +70,51 @@
       </div>
     {% endfor %}
   </div>
+  <div class="mt-8">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-lg font-semibold">보호화면 이미지</h2>
+    <form action="/kiosks/{{ kiosk.id }}/screensaver/upload" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
+      <input type="file" name="file" accept="image/*"
+             class="text-xs border rounded px-2 py-1" required>
+      <button type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+        이미지 추가
+      </button>
+    </form>
+  </div>
+
+  {% if screen_images %}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {% for img in screen_images %}
+        <div class="border rounded-lg overflow-hidden bg-slate-50">
+          <div class="aspect-[9/16] bg-slate-200 flex items-center justify-center">
+            <img src="{{ img.image_url }}"
+                 alt="screensaver {{ loop.index }}"
+                 class="w-full h-full object-cover">
+          </div>
+          <div class="flex items-center justify-between px-2 py-1.5 text-xs">
+            <span class="text-slate-600">
+              #{{ img.sort_order }}
+            </span>
+            <form action="/kiosks/{{ kiosk.id }}/screensaver/{{ img.id }}/delete" method="post"
+                  onsubmit="return confirm('이 이미지를 삭제하시겠습니까?');">
+              <button type="submit"
+                      class="text-red-600 hover:text-red-800">
+                삭제
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="border rounded-lg px-4 py-6 text-sm text-slate-500 bg-slate-50">
+      등록된 보호화면 이미지가 없습니다.<br>
+      상단의 <span class="font-semibold">[이미지 추가]</span> 버튼으로 이미지를 업로드하지 않으면
+      키오스크 앱에서는 기본 보호화면 이미지를 사용합니다.
+    </div>
+  {% endif %}
+</div>
 </div>
 
 <!-- 공용 슬롯 편집 모달 -->

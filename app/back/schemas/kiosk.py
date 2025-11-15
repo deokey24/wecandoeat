@@ -48,3 +48,11 @@ class KioskHeartbeatRequest(BaseModel):
     temperature: Optional[float] = None
     door_open: Optional[bool] = None
     extra: Optional[dict] = None
+
+class KioskConfig(BaseModel):
+    kiosk_id: int
+    kiosk_name: str
+    slots: List[SlotConfig]
+
+    # ★ 보호화면 이미지 리스트 (R2 URL)
+    screensaver_images: List[str] = []

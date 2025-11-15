@@ -3,6 +3,8 @@ import os
 import uuid
 import mimetypes
 
+from typing import Any
+
 import boto3
 from dotenv import load_dotenv
 
@@ -62,3 +64,22 @@ def build_public_url(object_key: str) -> str:
         return f"{base}/{object_key}"
 
     return f"{endpoint_url}/{BUCKET_NAME}/{object_key}"
+
+async def upload_image_to_r2(file: Any, prefix: str) -> str:
+    """
+    FastAPI UploadFile 같은 객체를 받아서 R2에 업로드하고
+    '외부에서 접근 가능한 URL'을 바로 반환하는 헬퍼.
+
+    사용 예:
+        image_url = await upload_image_to_r2(file, "kiosk/GANGNAM01/screensaver")
+    """
+    # file 은 보통 fastapi.UploadFile 형태라고 가정 (.filename, .read() 지원)
+    original_filename = getattr(file, "filename", "upload.bin")
+    data = await file.read()
+
+    # 기존 상품 업로드 유틸 재사용 (object_key 반환)
+    object_key = upload_product_image(prefix=prefix, filename=original_filename, data=data)
+
+    # 외부 접근 가능한 URL로 변환해서 반환
+    public_url = build_public_url(object_key)
+    return public_url

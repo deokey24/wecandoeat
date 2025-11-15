@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.back.models.kiosk import Kiosk, KioskStatusLog
+from app.back.models.kiosk import Kiosk, KioskStatusLog, KioskScreenImage
 from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.product import Product
 from app.back.schemas.kiosk import KioskConfig, SlotConfig
@@ -17,7 +17,8 @@ async def get_by_id(db: AsyncSession, kiosk_id: int) -> Optional[Kiosk]:
     result = await db.execute(
         select(Kiosk)
         .options(
-            selectinload(Kiosk.store)  # ← 지점 정보를 함께 로딩
+            selectinload(Kiosk.store),
+            selectinload(Kiosk.screen_images),
         )
         .where(Kiosk.id == kiosk_id)
     )
@@ -143,6 +144,15 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     current_stock=None,
                 )
             )
+            
+    # ★ 보호화면 이미지 URL 리스트 (활성 + sort_order 순)
+    screensaver_images: List[str] = []
+    if kiosk.screen_images:
+        for img in sorted(
+            [i for i in kiosk.screen_images if i.is_active],
+            key=lambda x: x.sort_order,
+        ):
+            screensaver_images.append(img.image_url)
 
     return KioskConfig(
         kiosk_id=kiosk.id,
