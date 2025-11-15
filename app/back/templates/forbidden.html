@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}접근 권한 없음 | 관리자{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-[60vh]">
+  <div class="max-w-md w-full bg-white shadow-lg rounded-xl p-8 text-center">
+    <h1 class="text-xl font-bold mb-4">접근 권한이 없습니다</h1>
+    <p class="text-sm text-slate-600 mb-6">
+      {{ message or "해당 페이지에 접근할 수 있는 권한이 없습니다. 관리자에게 문의해주세요." }}
+    </p>
+    <a href="/dashboard"
+       class="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg">
+      대시보드로 돌아가기
+    </a>
+  </div>
+</div>
+{% endblock %}

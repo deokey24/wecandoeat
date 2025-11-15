@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}상품 관리{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+
+  <h1 class="text-2xl font-bold mb-6">상품 관리</h1>
+
+  <!-- 상단: 검색 + 상품 등록 -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+
+    <!-- 검색창 -->
+    <form method="get" action="/products" class="flex items-center gap-2 w-full md:w-1/2">
+      <input type="text"
+             name="q"
+             value="{{ query or '' }}"
+             placeholder="상품명, 코드로 검색"
+             class="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200">
+
+      <button class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+        검색
+      </button>
+    </form>
+
+    <!-- 상품등록 -->
+    <a href="/products/new"
+       class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 text-center whitespace-nowrap">
+      + 상품 등록
+    </a>
+  </div>
+
+  <!-- 상품 리스트 -->
+  <div class="bg-white shadow rounded-xl p-6 overflow-x-auto">
+    <table class="w-full text-sm min-w-[900px]">
+      <thead class="bg-slate-100 text-left">
+        <tr>
+          <th class="px-3 py-2 w-20">이미지</th>
+          <th class="px-3 py-2 w-48">상품명</th>
+          <th class="px-3 py-2">카테고리</th>
+          <th class="px-3 py-2">가격</th>
+          <th class="px-3 py-2 w-28">성인용</th>
+          <th class="px-3 py-2 w-32">코드</th>
+          <th class="px-3 py-2 w-40">등록일</th>
+          <th class="px-3 py-2 w-24">관리</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for p in products %}
+        <tr class="border-t">
+          <td class="px-3 py-2">
+            {% if p.image_url %}
+              <img src="{{ p.image_url }}"
+                   class="w-16 h-16 object-cover rounded" />
+            {% else %}
+              <div class="w-16 h-16 bg-slate-200 flex items-center justify-center text-xs text-slate-500 rounded">
+                없음
+              </div>
+            {% endif %}
+          </td>
+
+          <td class="px-3 py-2 font-medium">{{ p.name }}</td>
+          <td class="px-3 py-2">{{ p.category or "-" }}</td>
+          <td class="px-3 py-2">{{ "{:,}".format(p.price) }}원</td>
+          <td class="px-3 py-2">
+            {% if p.is_adult_only %}
+              <span class="text-red-600 font-semibold">성인</span>
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td class="px-3 py-2">{{ p.code or "-" }}</td>
+          <td class="px-3 py-2">{{ p.created_at.strftime("%Y-%m-%d") }}</td>
+
+          <td class="px-3 py-2">
+            <a href="/products/{{ p.id }}/edit"
+               class="text-blue-600 hover:underline">수정</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if products|length == 0 %}
+      <div class="py-10 text-center text-slate-500">
+        등록된 상품이 없습니다.
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

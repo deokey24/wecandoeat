@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}관리자페이지{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+  <div class="flex min-h-screen">
+
+    {% set name = request.session.get("name") %}
+    {% set username = request.session.get("username") %}
+    {% set role = request.session.get("role", 0) %}
+    {% set path = request.url.path %}
+
+
+    {# ================= 사이드바 ================= #}
+    {% if username %}
+    <aside id="sidebar"
+           class="fixed md:static top-0 left-0 z-40
+                  w-56 md:w-60 h-full
+                  bg-white border-r border-slate-200
+                  flex flex-col
+                  transform -translate-x-full md:translate-x-0
+                  transition-transform duration-300">
+
+      {# 상단: 유저 이름 + 모바일용 닫기 버튼 #}
+      <div class="h-14 px-4 flex items-center justify-between border-b border-slate-100">
+        <div class="text-sm font-semibold text-slate-800">
+          {% if username %}
+            {{ name }}님
+          {% else %}
+            로그인 필요
+          {% endif %}
+        </div>
+        {# 모바일에서만 보이는 닫기 버튼 #}
+        <button id="closeBtn" class="md:hidden text-xl leading-none">
+          ✕
+        </button>
+      </div>
+
+      {# 네비 #}
+      <nav class="flex-1 overflow-y-auto py-2 text-sm">
+
+        <a href="/dashboard"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path.startswith('/dashboard') %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">🏠</span>
+          <span>홈</span>
+        </a>
+
+        {% if role >= 1 %}
+          <div class="mt-4 mb-1 px-4 text-[11px] font-semibold text-slate-400">
+            관리
+          </div>
+
+          <a href="/products"
+             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                    {% if path.startswith('/products') %}
+                      bg-blue-50 text-blue-600
+                    {% else %}
+                      text-slate-700 hover:bg-slate-50
+                    {% endif %}">
+            <span class="w-5 text-center">📦</span>
+            <span>상품관리</span>
+          </a>
+          <a href="/stores"
+             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                    {% if path.startswith('/stores') %}
+                      bg-blue-50 text-blue-600
+                    {% else %}
+                      text-slate-700 hover:bg-slate-50
+                    {% endif %}">
+            <span class="w-5 text-center">🏬</span>
+            <span>지점관리</span>
+          </a>
+          {% if role == 1 %}
+          <a href="/users"
+             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                    {% if path.startswith('/users') %}
+                      bg-blue-50 text-blue-600
+                    {% else %}
+                      text-slate-700 hover:bg-slate-50
+                    {% endif %}">
+            <span class="w-5 text-center">🧾</span>
+            <span>권한관리</span>
+          </a>
+          {% endif %}
+
+          <a href="/kiosks"
+             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                    {% if path.startswith('/hardware') %}
+                      bg-blue-50 text-blue-600
+                    {% else %}
+                      text-slate-700 hover:bg-slate-50
+                    {% endif %}">
+            <span class="w-5 text-center">🖥️</span>
+            <span>하드웨어관리</span>
+          </a>
+          <div class="mt-4 mb-1 px-4 text-[11px] font-semibold text-slate-400">
+            매출
+          </div>
+
+          <a href="/sales"
+             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                    {% if path == '/sales' %}
+                      bg-blue-50 text-blue-600
+                    {% else %}
+                      text-slate-700 hover:bg-slate-50
+                    {% endif %}">
+            <span class="w-5 text-center">📈</span>
+            <span>매출</span>
+          </a>
+
+          <a href="/sales/items"
+             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                    {% if path.startswith('/sales/items') %}
+                      bg-blue-50 text-blue-600
+                    {% else %}
+                      text-slate-700 hover:bg-slate-50
+                    {% endif %}">
+            <span class="w-5 text-center">🧾</span>
+            <span>판매현황</span>
+          </a>
+        {% endif %}
+      </nav>
+
+      <div class="border-t border-slate-200 p-3 text-xs">
+        {% if username %}
+        <form action="/logout" method="post">
+          <button class="w-full text-left text-slate-500 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg">
+            로그아웃
+          </button>
+        </form>
+        {% else %}
+        <a href="/login" class="block text-slate-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-2 rounded-lg">
+          로그인
+        </a>
+        {% endif %}
+      </div>
+    </aside>
+    {% endif %}
+
+    {# ================= 메인 영역 ================= #}
+    <main class="flex-1 min-h-screen">
+      {# 모바일 상단바 (햄버거 버튼) #}
+      <header class="md:hidden h-14 px-4 flex items-center justify-between bg-white border-b">
+        <button id="menuBtn" class="text-xl">
+          ☰
+        </button>
+        <span class="text-sm font-semibold">
+          관리자페이지
+        </span>
+      </header>
+
+      <div class="p-4 md:p-8">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+  </div>
+
+  {# ========== 모바일 햄버거 & 닫기 토글 JS ========== #}
+  <script>
+    const menuBtn = document.getElementById("menuBtn");
+    const closeBtn = document.getElementById("closeBtn");
+    const sidebar = document.getElementById("sidebar");
+
+    function toggleSidebar() {
+      if (sidebar.classList.contains("-translate-x-full")) {
+        sidebar.classList.remove("-translate-x-full");
+      } else {
+        sidebar.classList.add("-translate-x-full");
+      }
+    }
+
+    menuBtn?.addEventListener("click", toggleSidebar);
+    closeBtn?.addEventListener("click", toggleSidebar);
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}상품 등록{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8">
+
+  <h1 class="text-2xl font-bold mb-6">상품 등록</h1>
+
+  <form method="post" action="/products/new" class="bg-white shadow rounded-xl p-6 space-y-4">
+
+    <!-- 기본 정보 -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">상품명 <span class="text-red-500">*</span></label>
+        <input name="name" required
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">카테고리</label>
+        <select name="category"
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200">
+            <option value="">선택하세요</option>
+            <option value="기기">기기</option>
+            <option value="코일&카트리지">코일&카트리지</option>
+            <option value="액상">액상</option>
+            <option value="일회용">일회용</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">판매가(원) <span class="text-red-500">*</span></label>
+        <input name="price" type="number" min="0" required
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">상품 코드</label>
+        <input name="code"
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+               placeholder="내부코드 / 바코드 등" />
+      </div>
+    </div>
+
+    <!-- 옵션 -->
+    <div class="flex items-center gap-2 mt-2">
+      <input id="is_adult_only" name="is_adult_only" type="checkbox"
+             class="w-4 h-4 border rounded">
+      <label for="is_adult_only" class="text-sm text-slate-700">
+        성인 전용 상품
+      </label>
+    </div>
+
+    <!-- 이미지 / 상세 URL -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+      <div>
+        <label class="block text-sm font-medium mb-1">이미지 URL</label>
+        <input name="image_url"
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+               placeholder="예: https://.../image.jpg" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">상세 페이지 URL</label>
+        <input name="detail_url"
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+               placeholder="키오스크에서 웹뷰로 열 상세 설명 페이지" />
+      </div>
+    </div>
+
+    <!-- 설명 -->
+    <div>
+      <label class="block text-sm font-medium mb-1">상품 설명</label>
+      <textarea name="description" rows="3"
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200"
+                placeholder="간단한 상품 설명을 입력하세요."></textarea>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-4">
+      <a href="/products"
+         class="px-4 py-2 rounded-lg text-sm border border-slate-300 text-slate-700 hover:bg-slate-50">
+        목록으로
+      </a>
+      <button type="submit"
+              class="px-4 py-2 rounded-lg text-sm bg-green-600 text-white hover:bg-green-700">
+        등록하기
+      </button>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

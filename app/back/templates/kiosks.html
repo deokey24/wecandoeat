@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}키오스크 관리 | 관리자{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">키오스크 관리</h1>
+      <p class="text-sm text-slate-500 mt-1">
+        지점별로 설치된 키오스크 및 자판기 연결 상태를 확인할 수 있습니다.
+      </p>
+    </div>
+    <a href="/kiosks/new"
+       class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow">
+      <span class="text-lg leading-none">＋</span>
+      <span>키오스크 추가</span>
+    </a>
+  </div>
+
+  <div class="bg-white shadow rounded-xl overflow-hidden">
+    <table class="min-w-full text-sm">
+      <thead class="bg-slate-100">
+        <tr>
+          <th class="px-4 py-2 text-left">ID</th>
+          <th class="px-4 py-2 text-left">지점</th>
+          <th class="px-4 py-2 text-left">키오스크 이름</th>
+          <th class="px-4 py-2 text-left">코드</th>
+          <th class="px-4 py-2 text-left">앱 버전</th>
+          <th class="px-4 py-2 text-left">마지막 하트비트</th>
+          <th class="px-4 py-2 text-left">상태</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if kiosks %}
+          {% for k in kiosks %}
+            <tr class="border-t hover:bg-slate-50">
+              <td class="px-4 py-2">{{ k.id }}</td>
+              <td class="px-4 py-2">{{ k.store_name }}</td>
+              <td class="px-4 py-2 font-medium">
+                  <a href="/kiosks/{{ k.id }}"
+                    class="text-blue-600 hover:underline">
+                    {{ k.name }}
+                </a>
+            </td>
+              <td class="px-4 py-2">
+                <span class="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700">
+                  {{ k.code }}
+                </span>
+              </td>
+              <td class="px-4 py-2">
+                {% if k.app_version %}
+                  <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    v{{ k.app_version }}
+                  </span>
+                {% else %}
+                  <span class="text-xs text-slate-400">-</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2">
+                {% if k.last_heartbeat_at %}
+                  <span class="text-xs text-slate-700">
+                    {{ k.last_heartbeat_at }}
+                  </span>
+                {% else %}
+                  <span class="text-xs text-slate-400">기록 없음</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2">
+                {% if k.last_heartbeat_at and k.is_active %}
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1"></span>
+                    온라인
+                  </span>
+                {% elif not k.is_active %}
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                    비활성
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-700 border border-red-200">
+                    <span class="w-2 h-2 rounded-full bg-red-500 mr-1"></span>
+                    오프라인
+                  </span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="px-4 py-6 text-center text-sm text-slate-500">
+              아직 등록된 키오스크가 없습니다. 우측 상단의
+              <span class="font-semibold">[키오스크 추가]</span> 버튼으로 첫 키오스크를 등록해 주세요.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

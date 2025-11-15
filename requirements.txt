@@ -1,0 +1,21 @@
+# --- FastAPI / Server ---
+fastapi
+uvicorn[standard]
+python-multipart
+
+# --- Templates ---
+jinja2
+
+# --- Settings / Env ---
+pydantic
+pydantic-settings
+python-dotenv
+
+# --- Security ---
+passlib
+itsdangerous
+
+# --- Database / ORM ---
+sqlalchemy>=2.0
+asyncpg
+alembic

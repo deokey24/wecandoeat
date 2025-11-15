@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}회원가입 | 관리자{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-[60vh]">
+  <div class="w-full max-w-md bg-white shadow-lg rounded-xl p-8">
+    <h1 class="text-2xl font-bold mb-6 text-center">관리자 회원가입</h1>
+
+    {% if error %}
+      <div class="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    <form method="post" action="/register">
+
+      <!-- 이름 -->
+      <div class="mb-4">
+          <label class="block mb-1 text-sm font-medium text-slate-700">이름</label>
+          <input name="name" type="text" required
+                class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+      </div>
+
+      <!-- 아이디 -->
+      <div class="mb-4">
+        <label class="block mb-1 text-sm font-medium text-slate-700">아이디</label>
+        <input name="username" type="text" required
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+      </div>
+
+      <!-- 비밀번호 -->
+      <div class="mb-4">
+        <label class="block mb-1 text-sm font-medium text-slate-700">비밀번호</label>
+        <input name="password" type="password" required
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+      </div>
+
+      <!-- 비밀번호 확인 -->
+      <div class="mb-6">
+        <label class="block mb-1 text-sm font-medium text-slate-700">비밀번호 확인</label>
+        <input name="password_confirm" type="password" required
+               class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring focus:ring-blue-200" />
+      </div>
+
+      <button type="submit"
+              class="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2.5 rounded-lg">
+        회원가입
+      </button>
+    </form>
+
+    <div class="mt-4 text-center text-sm">
+      이미 계정이 있으신가요?
+      <a href="/login" class="text-blue-600 hover:underline">로그인하기</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
