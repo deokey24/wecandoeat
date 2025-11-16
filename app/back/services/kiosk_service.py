@@ -87,8 +87,7 @@ async def update_heartbeat(
 
 async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
     """
-    키오스크에 연결된 슬롯 + 슬롯별 상품/재고 구성 정보를 내려주는 함수.
-    (자판기 개념 삭제 → kiosk.id 기준으로만 슬롯 조회)
+    키오스크에 연결된 슬롯 + 슬롯별 상품/재고 구성 정보
     """
     stmt = (
         select(
@@ -124,11 +123,24 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     col=slot.col,
                     label=slot.label,
                     max_capacity=slot.max_capacity,
+
+                    # 상품 기본 정보
                     product_id=product.id,
                     product_name=product.name,
                     price=product.price,
+
+                    # ★ 성인여부
                     is_adult_only=product.is_adult_only,
+
+                    # ★ 이미지들
                     image_url=product.image_url,
+                    detail_image_url=product.detail_url,
+
+                    # ★ 카테고리 (기기 / 카트리지)
+                    category_code=product.category,
+                    category_name=product.category,   # 혹시 한글명 따로 있으면 매핑 가능
+
+                    # 재고
                     current_stock=vsp.current_stock,
                 )
             )
@@ -141,16 +153,21 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     col=slot.col,
                     label=slot.label,
                     max_capacity=slot.max_capacity,
+
+                    # 비어있는 슬롯
                     product_id=None,
                     product_name=None,
                     price=None,
                     is_adult_only=None,
                     image_url=None,
+                    detail_image_url=None,
+                    category_code=None,
+                    category_name=None,
                     current_stock=None,
                 )
             )
-            
-    # ★ 보호화면 이미지 URL 리스트 (활성 + sort_order 순)
+
+    # 보호화면 이미지
     screensaver_images: List[str] = []
     if kiosk.screen_images:
         for img in sorted(

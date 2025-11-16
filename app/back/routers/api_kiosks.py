@@ -41,7 +41,10 @@ async def kiosk_handshake(
         kiosk_id=kiosk.id,
         store_id=kiosk.store_id,
         api_key=kiosk.api_key,
-        config=config.model_dump(),
+        # ★ 평문 패스워드 내려줌 (컬럼명에 맞게 조정)
+        kiosk_password=kiosk.kiosk_password,  # 또는 kiosk.password 등 실제 모델에 맞게
+        # ★ config는 그대로 Pydantic 모델로 넘겨도 됨
+        config=config,
     )
 
 
@@ -67,7 +70,8 @@ async def kiosk_heartbeat(
         kiosk,
         app_version=payload.app_version,
         ip=client_ip,
-        status_payload=payload.dict(),
+        # Pydantic v2 기준이면 model_dump(), v1이면 dict()
+        status_payload=payload.model_dump(),
     )
 
     return {
