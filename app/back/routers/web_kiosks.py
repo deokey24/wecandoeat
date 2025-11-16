@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -114,6 +115,7 @@ async def kiosk_create(
     store_id: int = Form(...),
     name: str = Form(...),
     code: str = Form(...),
+    kiosk_password: str = Form(...),
     generate_api_key: bool = Form(False),
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -126,12 +128,30 @@ async def kiosk_create(
             {"request": request, "message": "권한이 없습니다."},
             status_code=403,
         )
+        
+    existing = await db.execute(select(Kiosk).where(Kiosk.code == code))
+    if existing.scalar_one_or_none():
+        stores = (await db.execute(select(Store))).scalars().all()
+        return templates.TemplateResponse(
+            "kiosk_new.html",
+            {
+                "request": request,
+                "current_user": current_user,
+                "stores": stores,
+                "error": "이미 사용 중인 키오스크 코드입니다.",
+                "form_name": name,
+                "form_code": code,
+                "form_store_id": store_id,
+            },
+            status_code=400,
+        )
 
     # 1) 키오스크 생성
     kiosk = Kiosk(
         store_id=store_id,
         name=name,
         code=code,
+        kiosk_password=kiosk_password,
         api_key=kiosk_service.generate_api_key() if generate_api_key else None,
         is_active=True,
     )
@@ -159,7 +179,7 @@ async def kiosk_create(
             db.add(slot)
             
     default_screensaver_url = (
-        "https://img.wecandoeat.com/kiosk/CHUNCHEON01/screensaver/fbf280035f08418d8b0eb26d40ebc978.png"
+        "https://pub-2e3bf3debf45436a98ca36200e74fd66.r2.dev/kiosk/CHUNCHEON01/screensaver/fbf280035f08418d8b0eb26d40ebc978.png"
     )
     
     default_img = KioskScreenImage(
@@ -171,7 +191,26 @@ async def kiosk_create(
     db.add(default_img)
 
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # ✅ 혹시라도 동시에 같은 코드로 들어온 경우 대비
+        await db.rollback()
+        stores = (await db.execute(select(Store))).scalars().all()
+        return templates.TemplateResponse(
+            "kiosk_new.html",
+            {
+                "request": request,
+                "current_user": current_user,
+                "stores": stores,
+                "error": "키오스크 코드가 중복되었습니다. 다른 코드를 사용해주세요.",
+                "form_name": name,
+                "form_code": code,
+                "form_store_id": store_id,
+            },
+            status_code=400,
+        )
+
 
     return RedirectResponse("/kiosks", status_code=303)
 

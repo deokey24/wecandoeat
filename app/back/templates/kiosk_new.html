@@ -10,6 +10,11 @@
   </p>
 
   <div class="bg-white shadow rounded-xl p-6">
+    {% if error %}
+        <div class="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {{ error }}
+        </div>
+    {% endif %}
     <form method="post" action="/kiosks/new" class="space-y-5">
 
       <!-- 지점 선택 -->
@@ -19,12 +24,15 @@
         </label>
         <select name="store_id"
                 class="block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-          {% for s in stores %}
-            <option value="{{ s.id }}">{{ s.name }} ({{ s.code }})</option>
-          {% endfor %}
+            {% for s in stores %}
+                <option value="{{ s.id }}"
+                        {% if form_store_id and form_store_id == s.id %}selected{% endif %}>
+                {{ s.name }} ({{ s.code }})
+                </option>
+            {% endfor %}
         </select>
       </div>
-      
+
       <!-- 키오스크 이름 -->
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1">
@@ -33,12 +41,28 @@
         <input type="text"
                name="name"
                required
+               value="{{ form_name or '' }}"
                placeholder="예: 강남점 키오스크 1번"
                class="block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         <p class="mt-1 text-xs text-slate-400">
           관리자 화면에서 구분하기 위한 이름입니다. 지점명과 번호를 함께 쓰면 좋습니다.
         </p>
       </div>
+
+      <!-- 키오스크 설정 비밀번호 -->
+        <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">
+            설정 비밀번호 <span class="text-red-500">*</span>
+        </label>
+        <input type="text"
+                name="kiosk_password"
+                required
+                placeholder="예: 1234"
+                class="block w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+        <p class="mt-1 text-xs text-slate-400">
+            관리자가 키오스크에서 설정 메뉴에 접근할 때 사용할 비밀번호입니다.
+        </p>
+        </div>
 
       <!-- 키오스크 코드 -->
       <div>
@@ -48,6 +72,7 @@
         <input type="text"
                name="code"
                required
+               value="{{ form_code or '' }}"
                placeholder="예: K_GANGNAM_01"
                class="block w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
         <p class="mt-1 text-xs text-slate-400">
@@ -62,6 +87,7 @@
                type="checkbox"
                name="generate_api_key"
                value="true"
+               checked
                class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
         <label for="generate_api_key" class="ml-2 text-sm text-slate-700">
           API Key 자동 생성

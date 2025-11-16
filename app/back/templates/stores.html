@@ -120,6 +120,17 @@
               <td class="px-3 py-2">
                 {{ s.cs_phone or "-" }}
               </td>
+            <td class="px-3 py-2 text-right">
+            <form method="post"
+                    action="/stores/{{ s.id }}/delete"
+                    style="display:inline"
+                    onsubmit="return confirm('정말 이 지점과 관련된 데이터(키오스크/주문 등)를 모두 삭제하시겠습니까?');">
+                <button type="submit"
+                        class="inline-flex items-center px-2 py-1 text-xs rounded border border-red-300 text-red-600 hover:bg-red-50">
+                삭제
+                </button>
+            </form>
+            </td>
             </tr>
           {% endfor %}
         </tbody>

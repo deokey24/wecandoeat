@@ -1,0 +1,259 @@
+{# app/back/templates/sales.html #}
+{% extends "base.html" %}
+
+{% block title %}매출 조회{% endblock %}
+
+{% block content %}
+{% set role = request.session.get("role", 0) %}
+
+<div class="max-w-6xl mx-auto py-8 space-y-6">
+
+  {# 헤더 #}
+  <div>
+    <h1 class="text-2xl font-bold">매출 조회</h1>
+    <p class="text-sm text-slate-500 mt-1">
+      기간별/지점별 매출 내역을 조회합니다.
+    </p>
+  </div>
+
+  {# ---------------- 상단 검색 영역 ---------------- #}
+  <form method="get" action="/sales"
+        class="bg-white shadow rounded-xl p-4 md:p-6 space-y-4 text-sm">
+
+    {# 기간 + 빠른 버튼 #}
+    <div class="grid grid-cols-1 md:grid-cols-[2fr,1fr] gap-4 items-end">
+      <div class="space-y-2">
+        <label class="block text-xs font-medium text-slate-600">기간</label>
+        <div class="flex flex-col md:flex-row md:items-center gap-2">
+          <div class="flex items-center gap-2">
+            <input type="date" name="start_date"
+                   value="{{ start_date.isoformat() }}"
+                   class="border rounded-lg px-3 py-2 text-sm w-full md:w-40">
+            <span class="text-xs text-slate-400">~</span>
+            <input type="date" name="end_date"
+                   value="{{ end_date.isoformat() }}"
+                   class="border rounded-lg px-3 py-2 text-sm w-full md:w-40">
+          </div>
+          <div class="flex flex-wrap gap-1">
+            <button type="button" data-range="today"
+                    class="range-btn px-3 py-1 rounded-full border text-xs">
+              오늘
+            </button>
+            <button type="button" data-range="yesterday"
+                    class="range-btn px-3 py-1 rounded-full border text-xs">
+              어제
+            </button>
+            <button type="button" data-range="this_week"
+                    class="range-btn px-3 py-1 rounded-full border text-xs">
+              금주
+            </button>
+            <button type="button" data-range="last_week"
+                    class="range-btn px-3 py-1 rounded-full border text-xs">
+              전주
+            </button>
+            <button type="button" data-range="this_month"
+                    class="range-btn px-3 py-1 rounded-full border text-xs">
+              당월
+            </button>
+            <button type="button" data-range="last_month"
+                    class="range-btn px-3 py-1 rounded-full border text-xs">
+              전월
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {# 지점 선택: 관리자만 노출 #}
+      <div class="space-y-2">
+        <label class="block text-xs font-medium text-slate-600">지점</label>
+
+        {% if role == 1 %}
+          <select name="store_id"
+                  class="border rounded-lg px-3 py-2 text-sm w-full">
+            <option value="">전체</option>
+            {% for s in stores %}
+              <option value="{{ s.id }}"
+                      {% if selected_store_id == s.id %}selected{% endif %}>
+                {{ s.name }}
+              </option>
+            {% endfor %}
+          </select>
+        {% else %}
+          <div class="text-sm text-slate-700">
+            {{ current_user.store.name if current_user.store else '내 지점' }}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    {# 주문번호 / 상품명 + 조회 버튼 #}
+    <div class="grid grid-cols-1 md:grid-cols-[2fr,auto] gap-3 items-end">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-600">주문번호</label>
+          <input type="text" name="order_no" value="{{ order_no }}"
+                 class="border rounded-lg px-3 py-2 text-sm w-full"
+                 placeholder="주문번호">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600">상품명</label>
+          <input type="text" name="product_name" value="{{ product_name }}"
+                 class="border rounded-lg px-3 py-2 text-sm w-full"
+                 placeholder="상품명">
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit"
+                class="px-5 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold">
+          조회
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {# ---------------- 요약 카드 ---------------- #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+    <div class="bg-white shadow rounded-xl px-4 py-3">
+        <div class="text-xs text-slate-400 mb-1">주문건수(수량)</div>
+        <div class="text-xl font-bold">
+        {{ total_orders }}
+        <span class="text-sm text-slate-500"> ({{ total_quantity }})</span>
+        </div>
+    </div>
+    <div class="bg-white shadow rounded-xl px-4 py-3">
+        <div class="text-xs text-slate-400 mb-1">매출합계</div>
+        <div class="text-xl font-bold">
+        {{ "{:,}".format(total_sales or 0) }}<span class="text-sm text-slate-500"> 원</span>
+        </div>
+    </div>
+    <div class="bg-white shadow rounded-xl px-4 py-3">
+        <div class="text-xs text-slate-400 mb-1">객단가(평균)</div>
+        <div class="text-xl font-bold">
+        {{ "{:,}".format(avg_order_amount or 0) }}<span class="text-sm text-slate-500"> 원</span>
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">
+        * 취소/부분취소 처리 기준은 추후 조정 가능
+        </div>
+    </div>
+    </div>
+
+  {# ---------------- 주문 리스트 테이블 ---------------- #}
+  <div class="bg-white shadow rounded-xl p-4 md:p-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold">주문 내역</h2>
+      <span class="text-xs text-slate-400">
+        총 {{ orders|length }}건
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full text-xs md:text-sm">
+        <thead class="bg-slate-100 text-slate-600">
+          <tr>
+            <th class="px-3 py-2 text-left whitespace-nowrap">주문일자</th>
+            <th class="px-3 py-2 text-left whitespace-nowrap">하드웨어</th>
+            <th class="px-3 py-2 text-left whitespace-nowrap">상품명</th>
+            <th class="px-3 py-2 text-right whitespace-nowrap">개수</th>
+            <th class="px-3 py-2 text-left whitespace-nowrap">상태</th>
+            <th class="px-3 py-2 text-right whitespace-nowrap">가격</th>
+            <th class="px-3 py-2 text-left whitespace-nowrap">주문번호</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if orders %}
+            {% for o in orders %}
+              <tr class="border-t hover:bg-slate-50">
+                <td class="px-3 py-2 whitespace-nowrap">
+                  {{ o.ordered_at.strftime("%Y-%m-%d %H:%M:%S") if o.ordered_at else "" }}
+                </td>
+                <td class="px-3 py-2 whitespace-nowrap">
+                  {{ o.kiosk_name }}
+                </td>
+                <td class="px-3 py-2">
+                  {{ o.product_name }}
+                </td>
+                <td class="px-3 py-2 text-right whitespace-nowrap">
+                  {{ o.quantity }}
+                </td>
+                <td class="px-3 py-2 whitespace-nowrap">
+                  {{ o.status }}
+                </td>
+                <td class="px-3 py-2 text-right whitespace-nowrap">
+                  {{ '{:,}'.format(o.price) if o.price is not none else '0' }}
+                </td>
+                <td class="px-3 py-2 whitespace-nowrap font-mono text-[11px] md:text-xs">
+                  {{ o.order_no }}
+                </td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="px-3 py-6 text-center text-sm text-slate-500">
+                조회된 주문 내역이 없습니다.
+              </td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# -------- 기간 빠른 선택 버튼용 스크립트 -------- #}
+<script>
+  (function() {
+    const btns = document.querySelectorAll(".range-btn");
+    const startInput = document.querySelector("input[name='start_date']");
+    const endInput = document.querySelector("input[name='end_date']");
+
+    function toISODate(d) {
+      const pad = (n) => String(n).padStart(2, "0");
+      return [
+        d.getFullYear(),
+        pad(d.getMonth() + 1),
+        pad(d.getDate())
+      ].join("-");
+    }
+
+    function setRange(type) {
+      const today = new Date();
+      let start = new Date();
+      let end = new Date();
+
+      if (type === "today") {
+        // 오늘 ~ 오늘
+      } else if (type === "yesterday") {
+        start.setDate(start.getDate() - 1);
+        end.setDate(end.getDate() - 1);
+      } else if (type === "this_week") {
+        const day = today.getDay() || 7;
+        start.setDate(today.getDate() - day + 1);
+      } else if (type === "last_week") {
+        const day = today.getDay() || 7;
+        end.setDate(today.getDate() - day);
+        start = new Date(end);
+        start.setDate(end.getDate() - 6);
+      } else if (type === "this_month") {
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      } else if (type === "last_month") {
+        const firstThisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(firstThisMonth - 1);
+        start = new Date(end.getFullYear(), end.getMonth(), 1);
+      }
+
+      startInput.value = toISODate(start);
+      endInput.value = toISODate(end);
+    }
+
+    btns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const type = btn.getAttribute("data-range");
+        setRange(type);
+      });
+    });
+  })();
+</script>
+
+{% endblock %}

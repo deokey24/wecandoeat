@@ -28,6 +28,8 @@ class Kiosk(Base):
     location_hint = Column(String(200))
     serial_no = Column(String(100))
     status = Column(String(20), nullable=False, default="ACTIVE")
+    
+    kiosk_password = Column(String(100), nullable=False)
 
     # 앱/통신 관련
     api_key = Column(String(255))
@@ -50,6 +52,11 @@ class Kiosk(Base):
     back_populates="kiosk",
     cascade="all, delete-orphan",
     order_by="KioskScreenImage.sort_order",
+    )
+    orders = relationship(
+        "Order",
+        back_populates="kiosk",
+        cascade="all, delete-orphan",
     )
 
 

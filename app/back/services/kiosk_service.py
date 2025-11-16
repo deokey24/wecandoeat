@@ -26,7 +26,12 @@ async def get_by_id(db: AsyncSession, kiosk_id: int) -> Optional[Kiosk]:
 
 
 async def get_by_code(db: AsyncSession, code: str) -> Optional[Kiosk]:
-    result = await db.execute(select(Kiosk).where(Kiosk.code == code))
+    result = await db.execute(
+        select(Kiosk).
+        options(
+            selectinload(Kiosk.screen_images),
+        )
+        .where(Kiosk.code == code))
     return result.scalar_one_or_none()
 
 
@@ -158,4 +163,5 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
         kiosk_id=kiosk.id,
         kiosk_name=kiosk.name,
         slots=slots,
+        screensaver_images=screensaver_images,
     )

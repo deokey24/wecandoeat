@@ -41,7 +41,7 @@ async def kiosk_handshake(
         kiosk_id=kiosk.id,
         store_id=kiosk.store_id,
         api_key=kiosk.api_key,
-        config=config,
+        config=config.model_dump(),
     )
 
 

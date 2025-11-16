@@ -27,7 +27,7 @@
           <th class="px-4 py-2 text-left">키오스크 이름</th>
           <th class="px-4 py-2 text-left">코드</th>
           <th class="px-4 py-2 text-left">앱 버전</th>
-          <th class="px-4 py-2 text-left">마지막 하트비트</th>
+          <th class="px-4 py-2 text-left">마지막 신호</th>
           <th class="px-4 py-2 text-left">상태</th>
         </tr>
       </thead>
@@ -60,7 +60,7 @@
               <td class="px-4 py-2">
                 {% if k.last_heartbeat_at %}
                   <span class="text-xs text-slate-700">
-                    {{ k.last_heartbeat_at }}
+                    {{ k.last_heartbeat_at.strftime("%Y-%m-%d %H:%M:%S") }}
                   </span>
                 {% else %}
                   <span class="text-xs text-slate-400">기록 없음</span>

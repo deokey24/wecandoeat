@@ -32,6 +32,11 @@ class Store(Base):
     updated_at = Column(DateTime, default=datetime.utcnow,
                         onupdate=datetime.utcnow, nullable=False)
     kiosks = relationship("Kiosk", back_populates="store")
+    orders = relationship(
+        "Order",
+        back_populates="store",
+        cascade="all, delete-orphan",
+    )
 
 
 # ==========================

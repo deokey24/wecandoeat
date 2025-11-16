@@ -25,6 +25,8 @@ ASYNC_DATABASE_URL = re.sub(r"^postgresql:", "postgresql+asyncpg:", clean_url)
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
     echo=False,        # 필요하면 True로 바꿔서 SQL 로그 보기
+    pool_pre_ping=True,
+    pool_recycle=1800,
     future=True,
     connect_args={
         "ssl": "require",   # Neon 이 SSL 요구하므로 이렇게 지정

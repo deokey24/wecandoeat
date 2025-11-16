@@ -9,7 +9,17 @@ from .core.config import settings
 
 from app.back.core.config import settings
 from app.back.core.db import init_db
-from .routers import web_auth, web_dashboard, web_users, web_stores, web_products, api_kiosks, web_kiosks
+from .routers import (
+    web_auth,
+    web_dashboard,
+    web_users,
+    web_stores,
+    web_products,
+    api_kiosks,
+    web_kiosks,
+    api_orders,
+    web_sales,   # ★ 추가
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -49,7 +59,8 @@ app.include_router(web_stores.router)
 app.include_router(web_products.router)
 app.include_router(web_kiosks.router)
 app.include_router(api_kiosks.router)
-
+app.include_router(api_orders.router)
+app.include_router(web_sales.router)
 
 # 헬스체크 (Render용 포함)
 @app.get("/health")
