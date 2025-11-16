@@ -179,7 +179,7 @@ async def kiosk_create(
             db.add(slot)
             
     default_screensaver_url = (
-        "https://pub-2e3bf3debf45436a98ca36200e74fd66.r2.dev/kiosk/CHUNCHEON01/screensaver/fbf280035f08418d8b0eb26d40ebc978.png"
+        "https://img.wecandoeat.com/kiosk/CHUNCHEON01/screensaver/fbf280035f08418d8b0eb26d40ebc978.png"
     )
     
     default_img = KioskScreenImage(
