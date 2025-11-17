@@ -36,7 +36,7 @@ class Product(Base):
         nullable=False,
     )
 
-    vending_slots = relationship("VendingSlotProduct", back_populates="product")
+    vending_slots = relationship("VendingSlotProduct", back_populates="product",cascade="all, delete-orphan",)
 
 
 # ================= Pydantic =================

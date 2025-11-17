@@ -91,6 +91,7 @@ async def register_submit(
     # 2) 유저 생성 시도
     try:
         user_in = UserCreate(
+            name=name,
             username=username,
             password=password,
             # 관리자 권한은 폼에서 제거했으니 여기서는 기본값으로 False

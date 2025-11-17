@@ -2,7 +2,7 @@
 {% block title %}상품 관리{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto py-8">
+<div class="max-w-6xl mx-auto py-8 px-3 sm:px-0">
 
   <h1 class="text-2xl font-bold mb-6">상품 관리</h1>
 
@@ -29,79 +29,201 @@
     </a>
   </div>
 
-  <!-- 상품 리스트 -->
-  <div class="bg-white shadow rounded-xl p-6 overflow-x-auto">
-    <table class="w-full text-sm min-w-[900px]">
-      <thead class="bg-slate-100 text-left">
-        <tr>
-          <th class="px-3 py-2 w-20">이미지</th>
-          <th class="px-3 py-2 w-48">상품명</th>
-          <th class="px-3 py-2">카테고리</th>
-          <th class="px-3 py-2">가격</th>
-          <th class="px-3 py-2 w-28">성인용</th>
-          <th class="px-3 py-2 w-32">코드</th>
-          <th class="px-3 py-2 w-40">등록일</th>
-          <th class="px-3 py-2 w-24">관리</th>
-        </tr>
-      </thead>
+  <!-- 상품 리스트 박스 -->
+  <div class="bg-white shadow rounded-xl p-4 sm:p-6">
 
-      <tbody>
-        {% for p in products %}
-        <tr class="border-t">
-          <td class="px-3 py-2">
+    {# ===============================
+       📱 모바일(~md): 카드형 리스트
+       =============================== #}
+    <div class="space-y-3 md:hidden">
+      {% for p in products %}
+        <div class="border rounded-lg p-3 flex gap-3">
+          <!-- 이미지 -->
+          <div class="shrink-0">
             {% if p.image_url %}
               <img src="{{ p.image_url }}"
-                   class="w-16 h-16 object-cover rounded" />
+                   class="w-20 h-20 object-cover rounded" />
             {% else %}
-              <div class="w-16 h-16 bg-slate-200 flex items-center justify-center text-xs text-slate-500 rounded">
+              <div class="w-20 h-20 bg-slate-200 flex items-center justify-center text-xs text-slate-500 rounded">
                 없음
               </div>
             {% endif %}
-          </td>
+          </div>
 
-          <td class="px-3 py-2 font-medium">{{ p.name }}</td>
-          <td class="px-3 py-2">{{ p.category or "-" }}</td>
-          <td class="px-3 py-2">{{ "{:,}".format(p.price) }}원</td>
-          <td class="px-3 py-2">
-            {% if p.is_adult_only %}
-              <span class="text-red-600 font-semibold">성인</span>
-            {% else %}
-              -
-            {% endif %}
-          </td>
-          <td class="px-3 py-2">{{ p.code or "-" }}</td>
-          <td class="px-3 py-2">{{ p.created_at.strftime("%Y-%m-%d") }}</td>
+          <!-- 정보 -->
+          <div class="flex-1 flex flex-col gap-1">
+            <!-- 이름 + 가격 -->
+            <div class="flex justify-between gap-2">
+              <div class="font-semibold text-sm leading-snug">
+                {{ p.name }}
+              </div>
+              <div class="text-right text-sm font-bold text-slate-800 whitespace-nowrap">
+                {{ "{:,}".format(p.price) }}원
+              </div>
+            </div>
 
-          <td class="px-3 py-2">
-            <div class="flex items-center gap-3">
+            <!-- 카테고리 / 코드 -->
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600 mt-1">
+              <span>카테고리: {{ p.category or "-" }}</span>
+              <span>코드: {{ p.code or "-" }}</span>
+            </div>
 
-                <!-- 수정 버튼 -->
-                <a href="/products/{{ p.id }}/edit"
-                class="text-blue-600 hover:underline">
+            <!-- 성인 / 등록일 -->
+            <div class="flex flex-wrap justify-between items-center mt-1 text-xs">
+              <div>
+                {% if p.is_adult_only %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 text-[11px] font-semibold">
+                    성인 상품
+                  </span>
+                {% else %}
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-50 text-slate-500 border border-slate-200 text-[11px]">
+                    일반
+                  </span>
+                {% endif %}
+              </div>
+              <div class="text-slate-500 text-[11px]">
+                등록: {{ p.created_at.strftime("%Y-%m-%d") }}
+              </div>
+            </div>
+
+            <!-- 버튼 -->
+            <div class="flex justify-end gap-3 mt-2">
+              <a href="/products/{{ p.id }}/edit"
+                 class="text-xs text-blue-600 hover:underline">
                 수정
-                </a>
+              </a>
 
-                <!-- 삭제 버튼 -->
-                <form method="post" action="/products/{{ p.id }}/delete"
+              <form method="post" action="/products/{{ p.id }}/delete"
                     onsubmit="return confirm('정말 삭제하시겠습니까? 삭제 시 슬롯 매핑도 함께 사라질 수 있습니다.');">
                 <button type="submit"
-                        class="text-red-600 hover:underline">
-                    삭제
+                        class="text-xs text-red-600 hover:underline">
+                  삭제
                 </button>
-                </form>
-
+              </form>
             </div>
-        </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+          </div>
+        </div>
+      {% endfor %}
 
-    {% if products|length == 0 %}
-      <div class="py-10 text-center text-slate-500">
-        등록된 상품이 없습니다.
+      {% if products|length == 0 %}
+        <div class="py-10 text-center text-slate-500 text-sm">
+          등록된 상품이 없습니다.
+        </div>
+      {% endif %}
+    </div>
+
+    {# ===============================
+       🖥 데스크탑(md~): 기존 테이블
+       =============================== #}
+    <div class="hidden md:block overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-100 text-left">
+          <tr>
+            <th class="px-3 py-2 w-20">이미지</th>
+            <th class="px-3 py-2 w-48">상품명</th>
+            <th class="px-3 py-2">카테고리</th>
+            <th class="px-3 py-2">가격</th>
+            <th class="px-3 py-2 w-28">성인용</th>
+            <th class="px-3 py-2 w-32">코드</th>
+            <th class="px-3 py-2 w-40">등록일</th>
+            <th class="px-3 py-2 w-24">관리</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for p in products %}
+          <tr class="border-t">
+            <td class="px-3 py-2">
+              {% if p.image_url %}
+                <img src="{{ p.image_url }}"
+                     class="w-16 h-16 object-cover rounded" />
+              {% else %}
+                <div class="w-16 h-16 bg-slate-200 flex items-center justify-center text-xs text-slate-500 rounded">
+                  없음
+                </div>
+              {% endif %}
+            </td>
+
+            <td class="px-3 py-2 font-medium">{{ p.name }}</td>
+            <td class="px-3 py-2">{{ p.category or "-" }}</td>
+            <td class="px-3 py-2">{{ "{:,}".format(p.price) }}원</td>
+            <td class="px-3 py-2">
+              {% if p.is_adult_only %}
+                <span class="text-red-600 font-semibold">성인</span>
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td class="px-3 py-2">{{ p.code or "-" }}</td>
+            <td class="px-3 py-2">{{ p.created_at.strftime("%Y-%m-%d") }}</td>
+
+            <td class="px-3 py-2">
+              <div class="flex items-center gap-3">
+
+                  <!-- 수정 버튼 -->
+                  <a href="/products/{{ p.id }}/edit"
+                  class="text-blue-600 hover:underline">
+                  수정
+                  </a>
+
+                  <!-- 삭제 버튼 -->
+                  <!-- <form method="post" action="/products/{{ p.id }}/delete"
+                        onsubmit="return confirm('정말 삭제하시겠습니까? 삭제 시 슬롯 매핑도 함께 사라질 수 있습니다.');">
+                    <button type="submit"
+                            class="text-red-600 hover:underline">
+                      삭제
+                    </button>
+                  </form> -->
+
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if products|length == 0 %}
+        <div class="py-10 text-center text-slate-500">
+          등록된 상품이 없습니다.
+        </div>
+      {% endif %}
+    </div>
+
+    {# ===============================
+       📄 페이징 네비게이션 (공통)
+       =============================== #}
+    {% if total_pages and total_pages > 1 %}
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+
+        {% if has_prev %}
+          <a href="?page={{ page - 1 }}&size={{ page_size }}{% if query %}&q={{ query }}{% endif %}"
+             class="px-3 py-1 border rounded-lg hover:bg-slate-100">
+            이전
+          </a>
+        {% else %}
+          <span class="px-3 py-1 border rounded-lg text-slate-400 cursor-not-allowed">
+            이전
+          </span>
+        {% endif %}
+
+        <span class="text-slate-600">
+          페이지 {{ page }} / {{ total_pages }} (총 {{ total }}개)
+        </span>
+
+        {% if has_next %}
+          <a href="?page={{ page + 1 }}&size={{ page_size }}{% if query %}&q={{ query }}{% endif %}"
+             class="px-3 py-1 border rounded-lg hover:bg-slate-100">
+            다음
+          </a>
+        {% else %}
+          <span class="px-3 py-1 border rounded-lg text-slate-400 cursor-not-allowed">
+            다음
+          </span>
+        {% endif %}
+
       </div>
     {% endif %}
+
   </div>
 
 </div>

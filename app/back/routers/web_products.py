@@ -7,6 +7,7 @@ from fastapi import (
     Form,
     UploadFile,
     File,
+    Query,
 )
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -45,21 +46,34 @@ def require_manager(current_user):
 async def products_page(
     request: Request,
     q: str | None = None,
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
     current_user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     if not require_manager(current_user):
         return RedirectResponse("/login", status_code=303)
 
-    products = await product_service.search_products(db, q or "")
+    page_data = await product_service.search_products_page(
+        db=db,
+        q=q or "",
+        page=page,
+        page_size=size,
+    )
 
     return templates.TemplateResponse(
         "products.html",
         {
             "request": request,
             "current_user": current_user,
-            "products": products,
+            "products": page_data["items"],
             "query": q or "",
+            "page": page_data["page"],
+            "page_size": page_data["page_size"],
+            "total": page_data["total"],
+            "total_pages": page_data["total_pages"],
+            "has_prev": page_data["has_prev"],
+            "has_next": page_data["has_next"],
         },
     )
 
