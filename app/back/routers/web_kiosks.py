@@ -405,6 +405,8 @@ async def kiosk_slot_clear(
     slot.max_capacity = 0
 
     await db.commit()
+    
+    await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}", status_code=303)
 
@@ -472,6 +474,8 @@ async def kiosk_slot_assign(
         vsp.is_active = True
 
     await db.commit()
+    
+    await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=edit", status_code=303)
 
@@ -519,6 +523,8 @@ async def kiosk_screensaver_upload(
     )
     db.add(new_img)
     await db.commit()
+    
+    await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
 
@@ -557,5 +563,7 @@ async def kiosk_screensaver_delete(
     if img:
         await db.delete(img)
         await db.commit()
+        
+        await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
