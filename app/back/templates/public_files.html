@@ -1,0 +1,95 @@
+{# back/templates/public_files.html #}
+{% extends "base.html" %}
+{% block title %}공용 파일 업로드 / 다운로드{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8">
+
+  <h1 class="text-2xl font-bold mb-6">공용 파일 업로드 / 다운로드</h1>
+
+  <!-- 업로드 폼 -->
+  <div class="bg-white shadow rounded-lg p-4 mb-8">
+    <h2 class="text-lg font-semibold mb-4">파일 업로드</h2>
+
+    <form method="post"
+          action="/public-files/upload"
+          enctype="multipart/form-data"
+          class="space-y-4">
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">
+          파일 선택
+        </label>
+        <input type="file"
+               name="file"
+               required
+               class="block w-full text-sm text-slate-700
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-slate-100 file:text-slate-700
+                      hover:file:bg-slate-200">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1">
+          경로 prefix (선택)
+        </label>
+        <input type="text"
+               name="prefix"
+               placeholder="예: public, images/test 등 (기본: public)"
+               class="border rounded-lg px-3 py-2 text-sm w-full focus:outline-none focus:ring focus:ring-blue-200">
+        <p class="mt-1 text-xs text-slate-500">
+          비워두면 <code>public/년/월/일/...</code> 아래에 저장됩니다.
+        </p>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="submit"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">
+          업로드
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- 업로드 결과 -->
+  {% if file_url %}
+    <div class="bg-white shadow rounded-lg p-4">
+      <h2 class="text-lg font-semibold mb-3">업로드 완료</h2>
+
+      <div class="space-y-2">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">
+            파일 URL
+          </label>
+          <input type="text"
+                 readonly
+                 value="{{ file_url }}"
+                 class="border rounded-lg px-3 py-2 text-sm w-full bg-slate-50 text-slate-800">
+        </div>
+
+        <div class="flex flex-wrap gap-2 mt-2">
+          <a href="{{ file_url }}"
+             target="_blank"
+             class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium
+                    bg-blue-600 text-white hover:bg-blue-700">
+            새 탭에서 열기
+          </a>
+          <a href="{{ file_url }}"
+             download
+             class="inline-flex items-center px-3 py-1.5 rounded-md text-xs font-medium
+                    bg-slate-700 text-white hover:bg-slate-800">
+            바로 다운로드
+          </a>
+        </div>
+
+        <p class="text-xs text-slate-500 mt-2">
+          이 URL을 그대로 복사해서 이미지, 파일 링크 등 어디서든 사용할 수 있습니다.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

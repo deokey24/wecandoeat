@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>키오스크 인증완료</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50">
+<div class="max-w-md mx-auto mt-10">
+  <h1 class="text-xl font-bold mb-4">키오스크 인증 진행 중</h1>
+  <p class="text-sm text-slate-600 mb-4">
+    코드 <span class="font-mono font-semibold">{{ code }}</span> 에 대한 키오스크 요청입니다.
+  </p>
+
+  <p class="text-sm text-slate-500 mb-6">
+    (지금은 데모용으로 "인증 완료" 버튼을 누르면 키오스크에 완료로 표시됩니다. 나중에는 여기서 본인인증 / 로그인 / 성인인증을 붙이면 됩니다.)
+  </p>
+
+  <form method="post" action="/qr-auth/complete" class="space-y-4">
+    <input type="hidden" name="session_id" value="{{ session_id }}">
+    <input type="hidden" name="code" value="{{ code }}">
+
+    <button
+      type="submit"
+      class="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700"
+    >
+      인증 완료 처리
+    </button>
+  </form>
+</div>
+</body>
+</html>

@@ -18,7 +18,10 @@ from .routers import (
     api_kiosks,
     web_kiosks,
     api_orders,
-    web_sales,   # ★ 추가
+    web_sales,
+    api_qr_auth,
+    web_qr_auth,
+    web_public_files
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -61,6 +64,9 @@ app.include_router(web_kiosks.router)
 app.include_router(api_kiosks.router)
 app.include_router(api_orders.router)
 app.include_router(web_sales.router)
+app.include_router(api_qr_auth.router)
+app.include_router(web_qr_auth.router)
+app.include_router(web_public_files.router)
 
 # 헬스체크 (Render용 포함)
 @app.get("/health")

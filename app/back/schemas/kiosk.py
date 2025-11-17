@@ -60,6 +60,10 @@ class KioskHandshakeResponse(BaseModel):
     # 당장은 평문으로 사용하는 키오스크 비밀번호 (관리자 진입 등)
     # 추후 해시/검증 API 방식으로 교체 예정
     kiosk_password: str
+    
+    pairing_code: str
+    
+    config_version: int
 
     # 키오스크 구성 정보
     config: KioskConfig
@@ -74,6 +78,8 @@ class KioskHeartbeatRequest(BaseModel):
 
     temperature: Optional[float] = None    # 내부 온도 등
     door_open: Optional[bool] = None       # 문 열림 여부
+    
+    current_config_version: Optional[int] = None  # 🔹 앱이 들고 있는 버전
 
     # 기타 확장용 필드 (배터리, 네트워크 상태 등 자유롭게)
     extra: Optional[Dict[str, Any]] = None

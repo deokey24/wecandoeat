@@ -3,6 +3,8 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional, List
 
+import random
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -182,3 +184,21 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
         slots=slots,
         screensaver_images=screensaver_images,
     )
+    
+async def bump_config_version(
+    db: AsyncSession,
+    kiosk_id: int,
+) -> None:
+    """
+    해당 키오스크의 config_version을 +1 해주는 공통 함수.
+    (설정/슬롯/상품 매핑/화면보호 이미지 등 '구성'이 바뀌는 모든 곳에서 이 함수만 호출)
+    """
+    kiosk = await db.get(Kiosk, kiosk_id)
+    if not kiosk:
+        return
+
+    kiosk.config_version = (kiosk.config_version or 0) + 1
+    kiosk.updated_at = datetime.now(timezone.utc)
+
+    await db.commit()
+    await db.refresh(kiosk)

@@ -58,6 +58,8 @@ class Kiosk(Base):
         back_populates="kiosk",
         cascade="all, delete-orphan",
     )
+    pair_code_4 = Column(String(4), unique=True, nullable=True)
+    config_version = Column(Integer, nullable=False, default=1)
 
 
 

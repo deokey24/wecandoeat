@@ -1,7 +1,8 @@
 # app/back/routers/web_kiosks.py
 from datetime import datetime
+import random
 
-from fastapi import APIRouter, Depends, Form, Request, UploadFile, File
+from fastapi import APIRouter, Depends, Form, Request, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError
@@ -18,6 +19,19 @@ from app.back.services import kiosk_service, user_service
 
 templates = Jinja2Templates(directory="app/back/templates")
 router = APIRouter()
+
+async def generate_unique_pair_code_4(db: AsyncSession) -> str:
+    for _ in range(50):  # 안전장치: 최대 50번 시도
+        code = f"{random.randint(0, 9999):04d}"  # 0000 ~ 9999
+
+        exists = await db.scalar(
+            select(Kiosk.id).where(Kiosk.pair_code_4 == code)
+        )
+        if not exists:
+            return code
+
+    # 이론상 거의 안 오지만, 정말 꽉 찬 경우
+    raise HTTPException(status_code=500, detail="고유한 4자리 코드를 생성하지 못했습니다.")
 
 
 # ---------------------------------------------------------------------------
@@ -145,6 +159,8 @@ async def kiosk_create(
             },
             status_code=400,
         )
+        
+    pair_code_4 = await generate_unique_pair_code_4(db)
 
     # 1) 키오스크 생성
     kiosk = Kiosk(
@@ -154,6 +170,7 @@ async def kiosk_create(
         kiosk_password=kiosk_password,
         api_key=kiosk_service.generate_api_key() if generate_api_key else None,
         is_active=True,
+        pair_code_4=pair_code_4,
     )
     db.add(kiosk)
     await db.flush()  # kiosk.id 확보
