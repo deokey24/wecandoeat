@@ -11,44 +11,73 @@
       <thead class="bg-slate-100">
         <tr>
           <th class="px-4 py-2 text-left">ID</th>
+          <th class="px-4 py-2 text-left">이름</th>   {# 🔥 추가 #}
           <th class="px-4 py-2 text-left">아이디</th>
           <th class="px-4 py-2 text-left">현재 역할</th>
           <th class="px-4 py-2 text-left">변경</th>
         </tr>
       </thead>
       <tbody>
+
         {% for u in users %}
           <tr class="border-t">
             <td class="px-4 py-2">{{ u.id }}</td>
+
+            <!-- 🔥 실명 표시 -->
+            <td class="px-4 py-2">{{ u.name }}</td>
+
             <td class="px-4 py-2">{{ u.username }}</td>
+
+            <!-- 역할명 표시 -->
             <td class="px-4 py-2">
-              {{ role_labels.get(u.role, ("지점관리자(" ~ u.role ~ ")")) }}
+              {% if role_labels.get(u.role) %}
+                {{ role_labels[u.role] }}
+              {% else %}
+                {# 🔥 role>=2 이면 지점 이름 표시 #}
+                {% set matched_store = None %}
+                {% for s in stores %}
+                  {% if s.role == u.role %}
+                    {% set matched_store = s %}
+                  {% endif %}
+                {% endfor %}
+                
+                {% if matched_store %}
+                  지점관리자 ({{ matched_store.name }})
+                {% else %}
+                  지점관리자 ({{ u.role }})
+                {% endif %}
+              {% endif %}
             </td>
+
+            <!-- 역할 변경 선택 -->
             <td class="px-4 py-2">
               <form method="post" action="/users/{{ u.id }}/role" class="flex items-center gap-2">
                 <select name="new_role" class="border px-2 py-1 rounded">
-                    
-                    <!-- 기본 역할 -->
-                    <option value="0" {% if u.role == 0 %}selected{% endif %}>가입대기중 (0)</option>
-                    <option value="1" {% if u.role == 1 %}selected{% endif %}>전체관리자 (1)</option>
 
-                    <optgroup label="각 지점목록">
-                        {% for s in stores %}
-                        <option value="{{ s.role }}"
-                                {% if u.role == s.role %}selected{% endif %}>
-                            {{ s.name }} ({{ s.role }})
-                        </option>
-                        {% endfor %}
-                    </optgroup>
+                  <!-- 기본 역할 -->
+                  <option value="0" {% if u.role == 0 %}selected{% endif %}>가입대기중 (0)</option>
+                  <option value="1" {% if u.role == 1 %}selected{% endif %}>전체관리자 (1)</option>
+
+                  <optgroup label="각 지점목록">
+                    {% for s in stores %}
+                      <option value="{{ s.role }}" {% if u.role == s.role %}selected{% endif %}>
+                        {{ s.name }} ({{ s.role }})
+                      </option>
+                    {% endfor %}
+                  </optgroup>
+
                 </select>
+
                 <button type="submit"
                         class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1 rounded-lg">
                   저장
                 </button>
               </form>
             </td>
+
           </tr>
         {% endfor %}
+
       </tbody>
     </table>
   </div>

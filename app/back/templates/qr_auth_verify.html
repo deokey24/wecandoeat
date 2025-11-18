@@ -2,32 +2,229 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>키오스크 인증완료</title>
+  <title>휴대폰 안심본인인증 - 통신사 선택</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-50">
-<div class="max-w-md mx-auto mt-10">
-  <h1 class="text-xl font-bold mb-4">키오스크 인증 진행 중</h1>
-  <p class="text-sm text-slate-600 mb-4">
-    코드 <span class="font-mono font-semibold">{{ code }}</span> 에 대한 키오스크 요청입니다.
-  </p>
+<body class="bg-white text-slate-900">
+<div class="min-h-screen flex flex-col">
 
-  <p class="text-sm text-slate-500 mb-6">
-    (지금은 데모용으로 "인증 완료" 버튼을 누르면 키오스크에 완료로 표시됩니다. 나중에는 여기서 본인인증 / 로그인 / 성인인증을 붙이면 됩니다.)
-  </p>
+  <!-- 상단 PASS 헤더 -->
+  <header class="w-full border-b border-slate-200 bg-white">
+    <div class="max-w-md mx-auto flex items-center justify-between px-4 py-3">
+      <div class="flex items-center">
+        <div class="bg-red-600 text-white font-bold px-3 py-1 text-xs tracking-[0.15em] rounded-sm">
+          PASS
+        </div>
+      </div>
+      <div class="text-[10px] text-slate-500 text-right leading-tight">
+        인증을 넘어<br>일상으로 PASS
+      </div>
+    </div>
+  </header>
 
-  <form method="post" action="/qr-auth/complete" class="space-y-4">
-    <input type="hidden" name="session_id" value="{{ session_id }}">
-    <input type="hidden" name="code" value="{{ code }}">
+  <main class="flex-1 bg-white">
+    <div class="max-w-md mx-auto px-4 pt-8 pb-10">
 
-    <button
-      type="submit"
-      class="w-full bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700"
-    >
-      인증 완료 처리
-    </button>
-  </form>
+      <!-- 코드 안내 -->
+      <p class="text-[11px] text-slate-500 mb-3">
+        코드 <span class="font-mono font-semibold">{{ code }}</span> 에 대한 키오스크 요청입니다.
+      </p>
+
+      <!-- 큰 제목 -->
+      <h1 class="text-[22px] sm:text-2xl font-bold leading-snug mb-2">
+        이용중인 통신사를<br>선택해 주세요
+      </h1>
+
+      <p class="text-[12px] text-slate-500 mb-6">
+        본인 명의로 가입된 통신사를 선택해 주세요.
+      </p>
+
+      <!-- 통신사 버튼 그리드 -->
+      <div class="grid grid-cols-3 gap-3 mb-4">
+        <!-- SKT -->
+        <button
+          type="button"
+          class="carrier-btn flex items-center justify-center text-[14px] font-semibold
+                 border border-slate-300 rounded-lg bg-white py-6 px-2
+                 shadow-sm active:scale-[0.98] transition"
+          data-carrier="SKT"
+        >
+          SKT
+        </button>
+
+        <!-- KT -->
+        <button
+          type="button"
+          class="carrier-btn flex items-center justify-center text-[14px] font-semibold
+                 border border-slate-300 rounded-lg bg-white py-6 px-2
+                 shadow-sm active:scale-[0.98] transition"
+          data-carrier="KT"
+        >
+          KT
+        </button>
+
+        <!-- LG U+ -->
+        <button
+          type="button"
+          class="carrier-btn flex items-center justify-center text-[14px] font-semibold
+                 border border-slate-300 rounded-lg bg-white py-6 px-2
+                 shadow-sm active:scale-[0.98] transition"
+          data-carrier="LGU"
+        >
+          LG U+
+        </button>
+
+        <!-- SKT 알뜰폰 -->
+        <button
+          type="button"
+          class="carrier-btn flex flex-col items-center justify-center
+                 text-[12px] font-semibold leading-tight
+                 border border-slate-300 rounded-lg bg-white py-5 px-2
+                 shadow-sm active:scale-[0.98] transition"
+          data-carrier="SKT_MVNO"
+        >
+          <span>SKT</span>
+          <span>알뜰폰</span>
+        </button>
+
+        <!-- KT 알뜰폰 -->
+        <button
+          type="button"
+          class="carrier-btn flex flex-col items-center justify-center
+                 text-[12px] font-semibold leading-tight
+                 border border-slate-300 rounded-lg bg-white py-5 px-2
+                 shadow-sm active:scale-[0.98] transition"
+          data-carrier="KT_MVNO"
+        >
+          <span>KT</span>
+          <span>알뜰폰</span>
+        </button>
+
+        <!-- LG U+ 알뜰폰 -->
+        <button
+          type="button"
+          class="carrier-btn flex flex-col items-center justify-center
+                 text-[12px] font-semibold leading-tight
+                 border border-slate-300 rounded-lg bg-white py-5 px-2
+                 shadow-sm active:scale-[0.98] transition"
+          data-carrier="LGU_MVNO"
+        >
+          <span>LG U+</span>
+          <span>알뜰폰</span>
+        </button>
+      </div>
+
+      <p class="text-[11px] text-slate-400 flex items-center mt-1">
+        <span class="inline-flex items-center justify-center w-4 h-4 border border-slate-400 rounded-full text-[10px] mr-1">i</span>
+        알뜰폰 사업자 확인
+      </p>
+
+      <!-- STEP 2: 이름 입력 (초기에 숨김) -->
+      <section id="step2" class="hidden mt-8">
+        <h2 class="text-[22px] sm:text-2xl font-bold leading-snug mb-2">
+          이름을<br>입력해 주세요
+        </h2>
+
+        <p class="text-[12px] text-slate-500 mb-6">
+          통신사에 등록된 이름을 정확히 입력해 주세요.
+        </p>
+
+        <form method="post" action="/qr-auth/complete" class="space-y-4">
+          <!-- 인증 세션 정보 -->
+          <input type="hidden" name="session_id" value="{{ session_id }}">
+          <input type="hidden" name="code" value="{{ code }}">
+          <input type="hidden" name="carrier" id="carrierInput">
+
+          <div>
+            <label for="name" class="block text-[12px] text-slate-600 mb-1">
+              이름
+            </label>
+            <input
+              id="name"
+              name="name"
+              type="text"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-base
+                     focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="이름을 입력하세요"
+              required
+            >
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-red-500 text-white py-3 rounded-lg text-[15px] font-semibold
+                   hover:bg-red-600 active:scale-[0.98] transition"
+          >
+            다음
+          </button>
+        </form>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- 하단 바 -->
+  <footer class="w-full border-t border-slate-200 bg-[#fafafa]">
+    <div class="max-w-md mx-auto px-4 py-3">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[10px] text-slate-500 gap-1">
+        <div>
+          <span class="mr-1">이용약관</span>
+          <span class="underline underline-offset-2 mr-1">개인정보처리방침</span>
+          <span class="hidden sm:inline">API 도입문의</span>
+          <span class="hidden sm:inline-block ml-1 text-[9px] text-slate-400">
+            VeriSign 256-bit SSL 암호화 적용
+          </span>
+        </div>
+        <div class="font-semibold text-slate-500 text-right">
+          KCB
+        </div>
+      </div>
+    </div>
+  </footer>
+
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const buttons = document.querySelectorAll(".carrier-btn");
+    const step2 = document.getElementById("step2");
+    const carrierInput = document.getElementById("carrierInput");
+    const nameInput = document.getElementById("name");
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        // 선택 스타일 초기화
+        buttons.forEach((b) => {
+          b.classList.remove("border-red-500", "ring-2", "ring-red-300", "text-red-600", "bg-red-50");
+          b.classList.add("border-slate-300", "text-slate-900");
+        });
+
+        // 선택된 버튼만 강조
+        btn.classList.remove("border-slate-300");
+        btn.classList.add("border-red-500", "ring-2", "ring-red-300", "text-red-600", "bg-red-50");
+
+        // hidden input에 통신사 값 저장
+        const carrierValue = btn.getAttribute("data-carrier");
+        if (carrierInput) {
+          carrierInput.value = carrierValue;
+        }
+
+        // 이름 입력 섹션 표시
+        if (step2 && step2.classList.contains("hidden")) {
+          step2.classList.remove("hidden");
+        }
+
+        // 이름 입력창에 포커스
+        if (nameInput) {
+          setTimeout(() => nameInput.focus(), 50);
+        }
+
+        // 모바일에선 아래로 스크롤 살짝 내려주기
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      });
+    });
+  });
+</script>
 </body>
 </html>

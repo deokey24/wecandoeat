@@ -33,6 +33,34 @@ async def generate_unique_pair_code_4(db: AsyncSession) -> str:
     # 이론상 거의 안 오지만, 정말 꽉 찬 경우
     raise HTTPException(status_code=500, detail="고유한 4자리 코드를 생성하지 못했습니다.")
 
+async def ensure_kiosk_access(
+    db: AsyncSession,
+    kiosk_id: int,
+    current_user,
+) -> Kiosk | None:
+    """
+    - 로그인은 이미 된 상태라고 가정
+    - role < 1 : 접근 불가
+    - role == 1 : 모든 키오스크 접근 가능
+    - role >= 2 : Store.role == user.role 인 지점의 키오스크만 접근 가능
+    """
+    if current_user.role < 1:
+        return None
+
+    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    if not kiosk:
+        return None
+
+    # 전체 관리자 → 바로 OK
+    if current_user.role == 1:
+        return kiosk
+
+    # 지점 관리자 → 본인 role 과 store.role 이 같은 경우만 허용
+    if kiosk.store and kiosk.store.role == current_user.role:
+        return kiosk
+
+    return None
+
 
 # ---------------------------------------------------------------------------
 # 공통: 현재 유저
@@ -55,18 +83,39 @@ async def kiosks_page(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
+
+    # role 0: 대기 / 일반 계정 → 접근 금지
+    if current_user.role < 1:
         return templates.TemplateResponse(
             "forbidden.html",
             {"request": request, "message": "권한이 없습니다."},
             status_code=403,
         )
 
-    result = await db.execute(
-        select(Kiosk, Store)
-        .join(Store, Store.id == Kiosk.store_id)
-        .order_by(Store.name, Kiosk.name)
-    )
+    # -----------------------------
+    # ① 전체 관리자 (role == 1)
+    #    → 모든 지점/키오스크 조회
+    # -----------------------------
+    if current_user.role == 1:
+        result = await db.execute(
+            select(Kiosk, Store)
+            .join(Store, Store.id == Kiosk.store_id)
+            .order_by(Store.name, Kiosk.name)
+        )
+
+    # -----------------------------
+    # ② 지점 관리자 (role >= 2)
+    #    → 본인 role 과 같은 Store.role 의 지점만 조회
+    #       예: user.role = 3 → Store.role = 3 인 지점
+    # -----------------------------
+    else:
+        result = await db.execute(
+            select(Kiosk, Store)
+            .join(Store, Store.id == Kiosk.store_id)
+            .where(Store.role == current_user.role)
+            .order_by(Store.name, Kiosk.name)
+        )
+
     rows = result.all()
 
     kiosks = []
@@ -245,22 +294,17 @@ async def kiosk_detail_page(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
+
+    # 🔹 권한 및 해당 키오스크 접근 가능 여부 확인
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
         return templates.TemplateResponse(
             "forbidden.html",
-            {"request": request, "message": "권한이 없습니다."},
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
             status_code=403,
         )
 
     mode = request.query_params.get("mode", "view")
-
-    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
-    if not kiosk:
-        return templates.TemplateResponse(
-            "forbidden.html",
-            {"request": request, "message": "존재하지 않는 키오스크입니다."},
-            status_code=404,
-        )
 
     # 슬롯 + 재고 + 상품 조인 (LEFT OUTER JOIN)
     stmt = (
@@ -284,11 +328,11 @@ async def kiosk_detail_page(
     # 층(row)별로 묶기
     layers: dict[int, list[dict]] = {}
     for slot, vsp, product in rows:
-        layer = slot.row  # 1,2,3,...층
+        layer = slot.row
         if layer not in layers:
             layers[layer] = []
 
-        label = slot.label or f"{slot.row}-{slot.col}"  # 예: 1-1, 1-2 ...
+        label = slot.label or f"{slot.row}-{slot.col}"
 
         layers[layer].append(
             {
@@ -306,15 +350,13 @@ async def kiosk_detail_page(
             }
         )
 
-    # row 번호 순으로 정렬된 리스트 형태로 변환
-    sorted_layers = sorted(layers.items(), key=lambda x: x[0])  # [(1, [...]), (2,[...])]
+    sorted_layers = sorted(layers.items(), key=lambda x: x[0])
 
-    # 상품 목록 (지점별로 나눌 거면 여기서 store_id로 필터)
     products = (await db.execute(select(Product))).scalars().all()
-    
+
     screen_images = sorted(
-    kiosk.screen_images,
-    key=lambda x: x.sort_order if x.sort_order is not None else 0,
+        kiosk.screen_images,
+        key=lambda x: x.sort_order if x.sort_order is not None else 0,
     )
 
     return templates.TemplateResponse(
@@ -345,20 +387,20 @@ async def kiosk_slot_stock_update(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
         return templates.TemplateResponse(
             "forbidden.html",
-            {"request": request, "message": "권한이 없습니다."},
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
             status_code=403,
         )
 
-    # 해당 슬롯 + 재고 가져오기
     stmt = select(VendingSlotProduct).where(VendingSlotProduct.slot_id == slot_id)
     result = await db.execute(stmt)
     vsp = result.scalar_one_or_none()
 
     if not vsp:
-        # 상품 매핑이 아직 없다면 아무것도 안 하고 돌아가기
         return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
 
     if action == "inc":
@@ -370,6 +412,7 @@ async def kiosk_slot_stock_update(
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
 
+
 @router.post("/kiosks/{kiosk_id}/slots/{slot_id}/clear")
 async def kiosk_slot_clear(
     kiosk_id: int,
@@ -380,19 +423,19 @@ async def kiosk_slot_clear(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
         return templates.TemplateResponse(
             "forbidden.html",
-            {"request": request, "message": "권한이 없습니다."},
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
             status_code=403,
         )
 
-    # 슬롯 존재 / 소속 키오스크 확인
     slot = await db.get(VendingSlot, slot_id)
     if not slot or slot.kiosk_id != kiosk_id:
         return RedirectResponse(f"/kiosks/{kiosk_id}", status_code=303)
 
-    # 슬롯에 매핑된 상품 레코드 삭제
     result = await db.execute(
         select(VendingSlotProduct).where(VendingSlotProduct.slot_id == slot_id)
     )
@@ -401,14 +444,13 @@ async def kiosk_slot_clear(
     if vsp:
         await db.delete(vsp)
 
-    # 옵션: 슬롯 자체 용량/재고 관련 값 초기화
     slot.max_capacity = 0
 
     await db.commit()
-    
     await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}", status_code=303)
+
 
 
 
@@ -429,19 +471,20 @@ async def kiosk_slot_assign(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
         return templates.TemplateResponse(
             "forbidden.html",
-            {"request": request, "message": "권한이 없습니다."},
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
             status_code=403,
         )
 
-    # 슬롯 존재 여부 확인 + max_capacity 업데이트
     slot_stmt = select(VendingSlot).where(VendingSlot.id == slot_id)
     slot_result = await db.execute(slot_stmt)
     slot = slot_result.scalar_one_or_none()
 
-    if not slot:
+    if not slot or slot.kiosk_id != kiosk_id:
         return templates.TemplateResponse(
             "forbidden.html",
             {"request": request, "message": "존재하지 않는 슬롯입니다."},
@@ -451,7 +494,6 @@ async def kiosk_slot_assign(
     slot.max_capacity = max_capacity
     slot.updated_at = datetime.utcnow()
 
-    # 슬롯-상품 링크 upsert
     vsp_stmt = select(VendingSlotProduct).where(
         VendingSlotProduct.slot_id == slot_id
     )
@@ -474,10 +516,10 @@ async def kiosk_slot_assign(
         vsp.is_active = True
 
     await db.commit()
-    
     await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=edit", status_code=303)
+
 
 @router.post("/kiosks/{kiosk_id}/screensaver/upload")
 async def kiosk_screensaver_upload(
@@ -489,23 +531,21 @@ async def kiosk_screensaver_upload(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
-        return templates.TemplateResponse(
-            "forbidden.html",
-            {"request": request, "message": "권한이 없습니다."},
-            status_code=403,
-        )
 
-    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    # 🔹 권한 + 해당 키오스크 접근 여부 확인
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
     if not kiosk:
         return templates.TemplateResponse(
             "forbidden.html",
-            {"request": request, "message": "존재하지 않는 키오스크입니다."},
-            status_code=404,
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
+            status_code=403,
         )
 
-    # R2 업로드 (prefix는 자유롭게)
-    image_url = await upload_image_to_r2(file, prefix=f"kiosk/{kiosk.code}/screensaver")
+    # R2 업로드
+    image_url = await upload_image_to_r2(
+        file,
+        prefix=f"kiosk/{kiosk.code}/screensaver",
+    )
 
     # sort_order = 현재 최대값 + 1
     result = await db.execute(
@@ -523,10 +563,11 @@ async def kiosk_screensaver_upload(
     )
     db.add(new_img)
     await db.commit()
-    
+
     await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
+
 
 @router.post("/kiosks/{kiosk_id}/screensaver/{image_id}/delete")
 async def kiosk_screensaver_delete(
@@ -538,19 +579,14 @@ async def kiosk_screensaver_delete(
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=303)
-    if current_user.role != 1:
-        return templates.TemplateResponse(
-            "forbidden.html",
-            {"request": request, "message": "권한이 없습니다."},
-            status_code=403,
-        )
 
-    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    # 🔹 권한 + 해당 키오스크 접근 여부 확인
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
     if not kiosk:
         return templates.TemplateResponse(
             "forbidden.html",
-            {"request": request, "message": "존재하지 않는 키오스크입니다."},
-            status_code=404,
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
+            status_code=403,
         )
 
     img_result = await db.execute(
@@ -563,7 +599,7 @@ async def kiosk_screensaver_delete(
     if img:
         await db.delete(img)
         await db.commit()
-        
+
         await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)

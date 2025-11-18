@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from ..models.kiosk import Kiosk
 
 from ..core.db import get_db
 from ..schemas.qr_auth import (
@@ -36,12 +38,15 @@ async def create_qr_auth_session(
             detail=str(e),
         )
 
-    kiosk = session.kiosk  # relationship
-    if not kiosk.pair_code_4:
+    kiosk = await db.scalar(
+        select(Kiosk).where(Kiosk.id == session.kiosk_id)
+    )
+    if not kiosk or not kiosk.pair_code_4:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Kiosk has no pair_code_4",
         )
+
 
     return QrAuthSessionCreateResponse(
         session_id=session.id,
