@@ -79,7 +79,7 @@ async def update_heartbeat(
     log = KioskStatusLog(
         kiosk_id=kiosk.id,
         status="ONLINE",
-        payload=str(status_payload),
+        payload=status_payload,
     )
     db.add(log)
 

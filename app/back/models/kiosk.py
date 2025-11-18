@@ -10,7 +10,7 @@ from sqlalchemy import (
     String,
     Integer
 )
-from sqlalchemy.dialects.postgresql import INET
+from sqlalchemy.dialects.postgresql import INET, JSONB
 from sqlalchemy.orm import relationship
 
 from app.back.core.db import Base
@@ -70,7 +70,7 @@ class KioskStatusLog(Base):
     kiosk_id = Column(BigInteger, ForeignKey("kiosks.id"), nullable=False)
 
     status = Column(String(20), nullable=False)
-    payload = Column(String)  # JSON 문자열로 저장 (JSONB 써도 됨)
+    payload = Column(JSONB)  # JSON 문자열로 저장 (JSONB 써도 됨)
 
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 
