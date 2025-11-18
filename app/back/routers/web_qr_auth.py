@@ -5,9 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.db import get_db
 from ..services import qr_auth_service
+from ..models.qr_auth import QrAuthStatus
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/back/templates")  # 경로는 프로젝트에 맞게 조정
+templates = Jinja2Templates(directory="app/back/templates")
 
 
 @router.get("/qr-auth")
@@ -47,14 +48,72 @@ async def qr_auth_code_submit(
             status_code=400,
         )
 
-    # 여기서는 아직 실제 본인인증/로그인은 안 붙이고
-    # "인증 완료" 버튼만 있는 페이지로 넘겨서 흐름만 확인
+    # 휴대폰 인증 화면으로 이동
     return templates.TemplateResponse(
         "qr_auth_verify.html",
         {
             "request": request,
             "code": code,
             "session_id": session.id,
+            "error": None,
+            "info": None,
+        },
+    )
+
+
+@router.post("/qr-auth/send-code")
+async def qr_auth_send_code(
+    request: Request,
+    session_id: int = Form(...),
+    code: str = Form(...),
+    phone: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    휴대폰 번호 입력 후 '인증번호 보내기' 누를 때.
+    """
+    phone = phone.strip().replace("-", "")
+
+    if not phone.startswith("010") or len(phone) not in (10, 11):
+        return templates.TemplateResponse(
+            "qr_auth_verify.html",
+            {
+                "request": request,
+                "code": code,
+                "session_id": session_id,
+                "error": "휴대폰 번호를 정확히 입력해주세요.",
+                "info": None,
+            },
+            status_code=400,
+        )
+
+    try:
+        session = await qr_auth_service.send_phone_auth_code(
+            db=db,
+            session_id=session_id,
+            phone_number=phone,
+        )
+    except ValueError as e:
+        return templates.TemplateResponse(
+            "qr_auth_verify.html",
+            {
+                "request": request,
+                "code": code,
+                "session_id": session_id,
+                "error": str(e),
+                "info": None,
+            },
+            status_code=400,
+        )
+
+    return templates.TemplateResponse(
+        "qr_auth_verify.html",
+        {
+            "request": request,
+            "code": code,
+            "session_id": session.id,
+            "error": None,
+            "info": "인증번호를 발송했습니다. 문자 메시지를 확인해 주세요.",
         },
     )
 
@@ -64,18 +123,34 @@ async def qr_auth_complete_from_web(
     request: Request,
     session_id: int = Form(...),
     code: str = Form(...),
+    phone: str = Form(...),
+    auth_code: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
-    # 여기서 원래는 "본인인증 성공 시"에만 들어오게 해야 함.
+    """
+    휴대폰 번호 + 인증번호 입력 후 '확인' 눌렀을 때.
+    """
     try:
-        await qr_auth_service.set_session_verified(
+        # 인증번호 검증 및 세션 VERIFIED 처리
+        session = await qr_auth_service.verify_phone_auth_code(
             db=db,
             session_id=session_id,
-            user_id=None,
+            input_code=auth_code.strip(),
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return templates.TemplateResponse(
+            "qr_auth_verify.html",
+            {
+                "request": request,
+                "code": code,
+                "session_id": session_id,
+                "error": str(e),
+                "info": None,
+            },
+            status_code=400,
+        )
 
+    # 여기까지 오면 kiosk 쪽에서 폴링하던 세션 상태가 VERIFIED로 바뀜
     return templates.TemplateResponse(
         "qr_auth_done.html",
         {"request": request},

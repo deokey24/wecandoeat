@@ -1,7 +1,8 @@
+# app/back/models/qr_auth.py
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer
+from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.back.core.db import Base     # 또는 from ..core.db import Base
@@ -35,5 +36,10 @@ class QrAuthSession(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # 🔽 SMS 인증 관련 필드
+    phone_number = Column(String(20), nullable=True)
+    sms_code = Column(String(10), nullable=True)
+    sms_sent_at = Column(DateTime(timezone=True), nullable=True)
 
     kiosk = relationship("Kiosk", backref="qr_auth_sessions")

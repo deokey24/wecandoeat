@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>휴대폰 안심본인인증 - 통신사 선택</title>
+  <title>휴대폰 안심본인인증</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
@@ -26,129 +26,186 @@
   <main class="flex-1 bg-white">
     <div class="max-w-md mx-auto px-4 pt-8 pb-10">
 
-      <!-- 코드 안내 -->
-      <p class="text-[11px] text-slate-500 mb-3">
-        코드 <span class="font-mono font-semibold">{{ code }}</span> 에 대한 키오스크 요청입니다.
-      </p>
+      <!-- 서버에서 내려온 에러/정보 메시지 (인증번호 오류, 서버 검증 오류 등) -->
+      {% if error %}
+        <div class="mb-3 text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          {{ error }}
+        </div>
+      {% endif %}
+      {% if info %}
+        <div class="mb-3 text-[12px] text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+          {{ info }}
+        </div>
+      {% endif %}
 
-      <!-- 큰 제목 -->
-      <h1 class="text-[22px] sm:text-2xl font-bold leading-snug mb-2">
-        이용중인 통신사를<br>선택해 주세요
-      </h1>
+      <!-- 클라이언트 쪽(주민번호/성인 체크) 에러 메시지 -->
+      <div id="clientErrorBox" class="hidden mb-3 text-[12px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"></div>
 
-      <p class="text-[12px] text-slate-500 mb-6">
-        본인 명의로 가입된 통신사를 선택해 주세요.
-      </p>
+      <!-- STEP 1: 통신사 선택 -->
+      <section id="step1">
+        <!-- 큰 제목 -->
+        <h1 class="text-[22px] sm:text-2xl font-bold leading-snug mb-2">
+          이용중인 통신사를<br>선택해 주세요
+        </h1>
 
-      <!-- 통신사 버튼 그리드 -->
-      <div class="grid grid-cols-3 gap-3 mb-4">
-        <!-- SKT -->
-        <button
-          type="button"
-          class="carrier-btn flex items-center justify-center text-[14px] font-semibold
-                 border border-slate-300 rounded-lg bg-white py-6 px-2
-                 shadow-sm active:scale-[0.98] transition"
-          data-carrier="SKT"
-        >
-          SKT
-        </button>
+        <p class="text-[12px] text-slate-500 mb-6">
+          본인 명의로 가입된 통신사를 선택해 주세요.
+        </p>
 
-        <!-- KT -->
-        <button
-          type="button"
-          class="carrier-btn flex items-center justify-center text-[14px] font-semibold
-                 border border-slate-300 rounded-lg bg-white py-6 px-2
-                 shadow-sm active:scale-[0.98] transition"
-          data-carrier="KT"
-        >
-          KT
-        </button>
+        <!-- 통신사 버튼 그리드 -->
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <!-- SKT -->
+          <button
+            type="button"
+            class="carrier-btn flex items-center justify-center text-[14px] font-semibold
+                   border border-slate-300 rounded-lg bg-white py-6 px-2
+                   shadow-sm active:scale-[0.98] transition"
+            data-carrier="SKT"
+          >
+            SKT
+          </button>
 
-        <!-- LG U+ -->
-        <button
-          type="button"
-          class="carrier-btn flex items-center justify-center text-[14px] font-semibold
-                 border border-slate-300 rounded-lg bg-white py-6 px-2
-                 shadow-sm active:scale-[0.98] transition"
-          data-carrier="LGU"
-        >
-          LG U+
-        </button>
+          <!-- KT -->
+          <button
+            type="button"
+            class="carrier-btn flex items-center justify-center text-[14px] font-semibold
+                   border border-slate-300 rounded-lg bg-white py-6 px-2
+                   shadow-sm active:scale-[0.98] transition"
+            data-carrier="KT"
+          >
+            KT
+          </button>
 
-        <!-- SKT 알뜰폰 -->
-        <button
-          type="button"
-          class="carrier-btn flex flex-col items-center justify-center
-                 text-[12px] font-semibold leading-tight
-                 border border-slate-300 rounded-lg bg-white py-5 px-2
-                 shadow-sm active:scale-[0.98] transition"
-          data-carrier="SKT_MVNO"
-        >
-          <span>SKT</span>
-          <span>알뜰폰</span>
-        </button>
+          <!-- LG U+ -->
+          <button
+            type="button"
+            class="carrier-btn flex items-center justify-center text-[14px] font-semibold
+                   border border-slate-300 rounded-lg bg-white py-6 px-2
+                   shadow-sm active:scale-[0.98] transition"
+            data-carrier="LGU"
+          >
+            LG U+
+          </button>
 
-        <!-- KT 알뜰폰 -->
-        <button
-          type="button"
-          class="carrier-btn flex flex-col items-center justify-center
-                 text-[12px] font-semibold leading-tight
-                 border border-slate-300 rounded-lg bg-white py-5 px-2
-                 shadow-sm active:scale-[0.98] transition"
-          data-carrier="KT_MVNO"
-        >
-          <span>KT</span>
-          <span>알뜰폰</span>
-        </button>
+          <!-- SKT 알뜰폰 -->
+          <button
+            type="button"
+            class="carrier-btn flex flex-col items-center justify-center
+                   text-[12px] font-semibold leading-tight
+                   border border-slate-300 rounded-lg bg-white py-5 px-2
+                   shadow-sm active:scale-[0.98] transition"
+            data-carrier="SKT_MVNO"
+          >
+            <span>SKT</span>
+            <span>알뜰폰</span>
+          </button>
 
-        <!-- LG U+ 알뜰폰 -->
-        <button
-          type="button"
-          class="carrier-btn flex flex-col items-center justify-center
-                 text-[12px] font-semibold leading-tight
-                 border border-slate-300 rounded-lg bg-white py-5 px-2
-                 shadow-sm active:scale-[0.98] transition"
-          data-carrier="LGU_MVNO"
-        >
-          <span>LG U+</span>
-          <span>알뜰폰</span>
-        </button>
-      </div>
+          <!-- KT 알뜰폰 -->
+          <button
+            type="button"
+            class="carrier-btn flex flex-col items-center justify-center
+                   text-[12px] font-semibold leading-tight
+                   border border-slate-300 rounded-lg bg-white py-5 px-2
+                   shadow-sm active:scale-[0.98] transition"
+            data-carrier="KT_MVNO"
+          >
+            <span>KT</span>
+            <span>알뜰폰</span>
+          </button>
 
-      <p class="text-[11px] text-slate-400 flex items-center mt-1">
-        <span class="inline-flex items-center justify-center w-4 h-4 border border-slate-400 rounded-full text-[10px] mr-1">i</span>
-        알뜰폰 사업자 확인
-      </p>
+          <!-- LG U+ 알뜰폰 -->
+          <button
+            type="button"
+            class="carrier-btn flex flex-col items-center justify-center
+                   text-[12px] font-semibold leading-tight
+                   border border-slate-300 rounded-lg bg-white py-5 px-2
+                   shadow-sm active:scale-[0.98] transition"
+            data-carrier="LGU_MVNO"
+          >
+            <span>LG U+</span>
+            <span>알뜰폰</span>
+          </button>
+        </div>
 
-      <!-- STEP 2: 이름 입력 (초기에 숨김) -->
+        <p class="text-[11px] text-slate-400 flex items-center mt-1">
+          <span class="inline-flex items-center justify-center w-4 h-4 border border-slate-400 rounded-full text-[10px] mr-1">i</span>
+          알뜰폰 사업자 확인
+        </p>
+      </section>
+
+      <!-- STEP 2: 이름/주민등록번호/휴대폰 입력 -->
       <section id="step2" class="hidden mt-8">
         <h2 class="text-[22px] sm:text-2xl font-bold leading-snug mb-2">
-          이름을<br>입력해 주세요
+          본인 정보를<br>입력해 주세요
         </h2>
 
         <p class="text-[12px] text-slate-500 mb-6">
-          통신사에 등록된 이름을 정확히 입력해 주세요.
+          통신사에 등록된 이름, 주민등록번호, 휴대폰 번호를 정확히 입력해 주세요.
         </p>
 
-        <form method="post" action="/qr-auth/complete" class="space-y-4">
-          <!-- 인증 세션 정보 -->
+        <form id="personalForm" method="post" action="/qr-auth/send-code" class="space-y-4">
+          <!-- 필수 세션 정보 -->
           <input type="hidden" name="session_id" value="{{ session_id }}">
           <input type="hidden" name="code" value="{{ code }}">
-          <input type="hidden" name="carrier" id="carrierInput">
+          <input type="hidden" name="carrier" id="carrierHiddenStep2" value="{{ carrier|default('') }}">
+          <input type="hidden" name="phone" id="phoneHiddenStep2">
 
+          <!-- 이름 -->
           <div>
-            <label for="name" class="block text-[12px] text-slate-600 mb-1">
-              이름
-            </label>
+            <label for="nameInput" class="block text-[12px] text-slate-600 mb-1">이름</label>
             <input
-              id="name"
+              id="nameInput"
               name="name"
               type="text"
               class="w-full border border-slate-300 rounded-lg px-3 py-2 text-base
                      focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-              placeholder="이름을 입력하세요"
-              required
+              placeholder="이름을 입력해 주세요"
             >
+          </div>
+
+          <!-- 주민등록번호 -->
+          <div>
+            <label class="block text-[12px] text-slate-600 mb-1">주민등록번호</label>
+            <div class="flex items-center gap-2">
+              <input
+                id="rrnFront"
+                type="text"
+                inputmode="numeric"
+                maxlength="6"
+                class="w-28 border border-slate-300 rounded-lg px-3 py-2 text-base text-center tracking-[0.2em]
+                       focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="앞 6자리"
+              >
+              <span class="text-slate-400">-</span>
+              <input
+                id="rrnBack"
+                type="password"
+                inputmode="numeric"
+                maxlength="7"
+                class="w-32 border border-slate-300 rounded-lg px-3 py-2 text-base text-center tracking-[0.3em]
+                       focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="뒤 7자리"
+              >
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">
+              뒷자리는 화면에 표시되지 않도록 처리됩니다.
+            </p>
+          </div>
+
+          <!-- 휴대폰 번호 -->
+          <div>
+            <label for="phoneInput" class="block text-[12px] text-slate-600 mb-1">휴대폰 번호</label>
+            <input
+              id="phoneInput"
+              type="tel"
+              inputmode="numeric"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-base
+                     focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="예) 01012345678"
+            >
+            <p class="text-[11px] text-slate-400 mt-1">
+              하이픈(-) 없이 숫자만 입력해 주세요.
+            </p>
           </div>
 
           <button
@@ -157,6 +214,49 @@
                    hover:bg-red-600 active:scale-[0.98] transition"
           >
             다음
+          </button>
+        </form>
+      </section>
+
+      <!-- STEP 3: 인증번호 입력 -->
+      <section id="step3" class="hidden mt-8">
+        <h2 class="text-[22px] sm:text-2xl font-bold leading-snug mb-2">
+          문자로 받은<br>인증번호를 입력해 주세요
+        </h2>
+
+        <p class="text-[12px] text-slate-500 mb-6">
+          {{ phone_masked|default("입력하신 휴대폰 번호로 발송된 인증번호를 입력해 주세요.") }}
+        </p>
+
+        <form id="authForm" method="post" action="/qr-auth/complete" class="space-y-4">
+          <input type="hidden" name="session_id" value="{{ session_id }}">
+          <input type="hidden" name="code" value="{{ code }}">
+          <input type="hidden" name="carrier" id="carrierHiddenStep3" value="{{ carrier|default('') }}">
+          <input type="hidden" name="phone" id="phoneHiddenStep3" value="{{ phone|default('') }}">
+
+          <div>
+            <label for="auth_code" class="block text-[12px] text-slate-600 mb-1">
+              인증번호 (6자리)
+            </label>
+            <input
+              id="auth_code"
+              name="auth_code"
+              type="text"
+              maxlength="6"
+              inputmode="numeric"
+              class="w-full border border-slate-300 rounded-lg px-3 py-2 text-base
+                     tracking-[0.35em] text-center
+                     focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              placeholder="인증번호 입력"
+            >
+          </div>
+
+          <button
+            type="submit"
+            class="w-full bg-slate-900 text-white py-3 rounded-lg text-[15px] font-semibold
+                   hover:bg-black active:scale-[0.98] transition"
+          >
+            인증 완료
           </button>
         </form>
       </section>
@@ -187,11 +287,72 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const buttons = document.querySelectorAll(".carrier-btn");
+    const step1 = document.getElementById("step1");
     const step2 = document.getElementById("step2");
-    const carrierInput = document.getElementById("carrierInput");
-    const nameInput = document.getElementById("name");
+    const step3 = document.getElementById("step3");
 
+    const buttons = document.querySelectorAll(".carrier-btn");
+    const carrierHiddenStep2 = document.getElementById("carrierHiddenStep2");
+    const carrierHiddenStep3 = document.getElementById("carrierHiddenStep3");
+
+    const personalForm = document.getElementById("personalForm");
+    const authForm = document.getElementById("authForm");
+
+    const clientErrorBox = document.getElementById("clientErrorBox");
+
+    const nameInput = document.getElementById("nameInput");
+    const rrnFront = document.getElementById("rrnFront");
+    const rrnBack = document.getElementById("rrnBack");
+    const phoneInput = document.getElementById("phoneInput");
+
+    const phoneHiddenStep2 = document.getElementById("phoneHiddenStep2");
+    const phoneHiddenStep3 = document.getElementById("phoneHiddenStep3");
+
+    const authCodeInput = document.getElementById("auth_code");
+
+    const hasServerError = {{ 'true' if error else 'false' }};
+    const hasServerInfo  = {{ 'true' if info else 'false' }};
+    const initialCarrier = "{{ carrier|default('') }}";
+
+    function showStep(step) {
+      step1.classList.add("hidden");
+      step2.classList.add("hidden");
+      step3.classList.add("hidden");
+
+      if (step === 1) step1.classList.remove("hidden");
+      if (step === 2) step2.classList.remove("hidden");
+      if (step === 3) step3.classList.remove("hidden");
+    }
+
+    function setClientError(msg) {
+      if (!msg) {
+        clientErrorBox.classList.add("hidden");
+        clientErrorBox.textContent = "";
+      } else {
+        clientErrorBox.classList.remove("hidden");
+        clientErrorBox.textContent = msg;
+      }
+    }
+
+    // 1) 서버에서 에러/정보를 내려준 경우 → 인증번호 단계에서 에러를 보여주도록 STEP3
+    if (hasServerError || hasServerInfo) {
+      showStep(3);
+    } else {
+      // 기본은 STEP1 (통신사 선택)
+      showStep(1);
+    }
+
+    // 2) 초기 carrier 가 있다면 버튼 스타일 반영
+    if (initialCarrier) {
+      buttons.forEach((btn) => {
+        if (btn.getAttribute("data-carrier") === initialCarrier) {
+          btn.classList.remove("border-slate-300");
+          btn.classList.add("border-red-500", "ring-2", "ring-red-300", "text-red-600", "bg-red-50");
+        }
+      });
+    }
+
+    // 통신사 선택 → STEP2 로 이동
     buttons.forEach((btn) => {
       btn.addEventListener("click", () => {
         // 선택 스타일 초기화
@@ -204,26 +365,168 @@
         btn.classList.remove("border-slate-300");
         btn.classList.add("border-red-500", "ring-2", "ring-red-300", "text-red-600", "bg-red-50");
 
-        // hidden input에 통신사 값 저장
         const carrierValue = btn.getAttribute("data-carrier");
-        if (carrierInput) {
-          carrierInput.value = carrierValue;
-        }
+        if (carrierHiddenStep2) carrierHiddenStep2.value = carrierValue;
+        if (carrierHiddenStep3) carrierHiddenStep3.value = carrierValue;
 
-        // 이름 입력 섹션 표시
-        if (step2 && step2.classList.contains("hidden")) {
-          step2.classList.remove("hidden");
-        }
+        setClientError(null);
+        showStep(2);
 
-        // 이름 입력창에 포커스
         if (nameInput) {
           setTimeout(() => nameInput.focus(), 50);
         }
-
-        // 모바일에선 아래로 스크롤 살짝 내려주기
-        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
       });
     });
+
+    // 주민등록번호 유효성 + 성인(만 19세 이상) 체크 함수
+    // 주민등록번호 체크섬 + 성인(만 19세 이상) 검증
+
+    function isValidRrnChecksum(front, back) {
+      // 형식 기본 체크
+      if (front.length !== 6 || back.length !== 7) return false;
+      if (!/^[0-9]+$/.test(front) || !/^[0-9]+$/.test(back)) return false;
+
+      const all = (front + back).split("").map((d) => parseInt(d, 10));
+      //      1  2  3  4  5  6  7  8  9 10 11 12 (index 0~11)
+      const multipliers = [2,3,4,5,6,7,8,9,2,3,4,5];
+
+      let sum = 0;
+      for (let i = 0; i < 12; i++) {
+        sum += all[i] * multipliers[i];
+      }
+
+      const mod = sum % 11;
+      let result = 11 - mod;
+      if (result >= 10) {
+        result = result % 10;
+      }
+
+      const lastDigit = all[12]; // 주민등록번호 마지막 자리
+      return result === lastDigit;
+    }
+
+    function isAdult(front, back) {
+      if (front.length !== 6 || back.length !== 7) return false;
+      if (!/^[0-9]+$/.test(front) || !/^[0-9]+$/.test(back)) return false;
+
+      const yy = parseInt(front.slice(0, 2), 10);
+      const mm = parseInt(front.slice(2, 4), 10);
+      const dd = parseInt(front.slice(4, 6), 10);
+      const s  = parseInt(back.charAt(0), 10);
+
+      if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return false;
+
+      let year;
+      // 세기/성별 코드에 따라 연도 계산
+      if (s === 1 || s === 2 || s === 5 || s === 6) {
+        year = 1900 + yy;
+      } else if (s === 3 || s === 4 || s === 7 || s === 8) {
+        year = 2000 + yy;
+      } else {
+        return false;
+      }
+
+      const birth = new Date(year, mm - 1, dd);
+      if (
+        birth.getFullYear() !== year ||
+        birth.getMonth() !== mm - 1 ||
+        birth.getDate() !== dd
+      ) {
+        return false;
+      }
+
+      const today = new Date();
+      let age = today.getFullYear() - year;
+      const mDiff = today.getMonth() - (mm - 1);
+      if (mDiff < 0 || (mDiff === 0 && today.getDate() < dd)) {
+        age -= 1;
+      }
+
+      return age >= 19;
+    }
+
+
+    function validateRrnAndAdult() {
+      const front = rrnFront ? rrnFront.value.trim() : "";
+      const back  = rrnBack ? rrnBack.value.trim() : "";
+
+      // 1) 체크섬으로 주민등록번호 유효성 검증
+      if (!isValidRrnChecksum(front, back)) {
+        return false;
+      }
+
+      // 2) 생년월일 기준 만 19세 이상 여부 검증
+      if (!isAdult(front, back)) {
+        return false;
+      }
+
+      return true;
+    }
+
+
+    // STEP2 "다음" 클릭 시 클라이언트 검증
+    if (personalForm) {
+      personalForm.addEventListener("submit", (e) => {
+        setClientError(null);
+
+        const carrier = carrierHiddenStep2 ? carrierHiddenStep2.value : "";
+        const nameVal = nameInput ? nameInput.value.trim() : "";
+        const phoneVal = phoneInput ? phoneInput.value.trim() : "";
+
+        if (!carrier) {
+          e.preventDefault();
+          setClientError("이용 중인 통신사를 선택해 주세요.");
+          showStep(1);
+          return;
+        }
+
+        if (!nameVal) {
+          e.preventDefault();
+          setClientError("이름을 입력해 주세요.");
+          if (nameInput) nameInput.focus();
+          return;
+        }
+
+        if (!validateRrnAndAdult()) {
+          e.preventDefault();
+          setClientError("개인정보가 맞는지 확인해주세요.");
+          if (rrnFront) rrnFront.focus();
+          return;
+        }
+
+        if (!phoneVal || !/^[0-9]{10,11}$/.test(phoneVal)) {
+          e.preventDefault();
+          setClientError("휴대폰 번호를 정확히 입력해 주세요.");
+          if (phoneInput) phoneInput.focus();
+          return;
+        }
+
+        if (phoneHiddenStep2) {
+          phoneHiddenStep2.value = phoneVal;
+        }
+        if (phoneHiddenStep3 && !phoneHiddenStep3.value) {
+          phoneHiddenStep3.value = phoneVal;
+        }
+
+        // 검증 통과 → 서버로 전송 (SMS 발송) → 서버에서 다시 이 페이지 렌더링 (STEP3 표시)
+        // e.preventDefault() 안 했으므로 그대로 submit 됨.
+      });
+    }
+
+    // STEP3: 인증 완료 시 기본 폼 검증 (간단히)
+    if (authForm) {
+      authForm.addEventListener("submit", (e) => {
+        setClientError(null);
+
+        const code = authCodeInput ? authCodeInput.value.trim() : "";
+        if (!code || !/^[0-9]{4,6}$/.test(code)) {
+          e.preventDefault();
+          setClientError("문자 메시지로 받은 인증번호를 정확히 입력해 주세요.");
+          if (authCodeInput) authCodeInput.focus();
+          return;
+        }
+      });
+    }
   });
 </script>
 </body>

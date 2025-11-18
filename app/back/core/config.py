@@ -19,6 +19,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",            # .env 에 다른 값 있어도 무시 (에러 X)
     )
+    
+    # NCP SENS (SMS)
+    NCP_SENS_ACCESS_KEY: str = ""
+    NCP_SENS_SECRET_KEY: str = ""
+    NCP_SENS_SERVICE_ID: str = "ncp:sms:kr:362313047390:wecandoeat"
+    NCP_SENS_CALLING_NUMBER: str = ""  # 발신번호 (예: 01012345678)
 
 
 settings = Settings()
