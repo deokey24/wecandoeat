@@ -7,16 +7,17 @@
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-100 min-h-screen">
-  <div class="flex min-h-screen">
+
+<body class="bg-slate-100 min-h-screen flex flex-col">
+
+  <div class="flex flex-1">
 
     {% set name = request.session.get("name") %}
     {% set username = request.session.get("username") %}
     {% set role = request.session.get("role", 0) %}
     {% set path = request.url.path %}
 
-
-    {# ================= 사이드바 ================= #}
+    {# ========== 사이드바 ========== #}
     {% if username %}
     <aside id="sidebar"
            class="fixed md:static top-0 left-0 z-40
@@ -26,7 +27,6 @@
                   transform -translate-x-full md:translate-x-0
                   transition-transform duration-300">
 
-      {# 상단: 유저 이름 + 모바일용 닫기 버튼 #}
       <div class="h-14 px-4 flex items-center justify-between border-b border-slate-100">
         <div class="text-sm font-semibold text-slate-800">
           {% if username %}
@@ -35,15 +35,12 @@
             로그인 필요
           {% endif %}
         </div>
-        {# 모바일에서만 보이는 닫기 버튼 #}
         <button id="closeBtn" class="md:hidden text-xl leading-none">
           ✕
         </button>
       </div>
 
-      {# 네비 #}
       <nav class="flex-1 overflow-y-auto py-2 text-sm">
-
         <a href="/dashboard"
            class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
                   {% if path.startswith('/dashboard') %}
@@ -56,67 +53,70 @@
         </a>
 
         {% if role >= 1 %}
-          <div class="mt-4 mb-1 px-4 text-[11px] font-semibold text-slate-400">
-            관리
-          </div>
+        <div class="mt-4 mb-1 px-4 text-[11px] font-semibold text-slate-400">
+          관리
+        </div>
 
-          <a href="/products"
-             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
-                    {% if path.startswith('/products') %}
-                      bg-blue-50 text-blue-600
-                    {% else %}
-                      text-slate-700 hover:bg-slate-50
-                    {% endif %}">
-            <span class="w-5 text-center">📦</span>
-            <span>상품관리</span>
-          </a>
-          <a href="/stores"
-             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
-                    {% if path.startswith('/stores') %}
-                      bg-blue-50 text-blue-600
-                    {% else %}
-                      text-slate-700 hover:bg-slate-50
-                    {% endif %}">
-            <span class="w-5 text-center">🏬</span>
-            <span>지점관리</span>
-          </a>
-          {% if role == 1 %}
-          <a href="/users"
-             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
-                    {% if path.startswith('/users') %}
-                      bg-blue-50 text-blue-600
-                    {% else %}
-                      text-slate-700 hover:bg-slate-50
-                    {% endif %}">
-            <span class="w-5 text-center">🧾</span>
-            <span>권한관리</span>
-          </a>
-          {% endif %}
+        <a href="/products"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path.startswith('/products') %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">📦</span>
+          <span>상품관리</span>
+        </a>
 
-          <a href="/kiosks"
-             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
-                    {% if path.startswith('/hardware') %}
-                      bg-blue-50 text-blue-600
-                    {% else %}
-                      text-slate-700 hover:bg-slate-50
-                    {% endif %}">
-            <span class="w-5 text-center">🖥️</span>
-            <span>하드웨어관리</span>
-          </a>
-          <div class="mt-4 mb-1 px-4 text-[11px] font-semibold text-slate-400">
-            매출
-          </div>
+        <a href="/stores"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path.startswith('/stores') %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">🏬</span>
+          <span>지점관리</span>
+        </a>
 
-          <a href="/sales"
-             class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
-                    {% if path == '/sales' %}
-                      bg-blue-50 text-blue-600
-                    {% else %}
-                      text-slate-700 hover:bg-slate-50
-                    {% endif %}">
-            <span class="w-5 text-center">📈</span>
-            <span>매출</span>
-          </a>
+        {% if role == 1 %}
+        <a href="/users"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path.startswith('/users') %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">🧾</span>
+          <span>권한관리</span>
+        </a>
+        {% endif %}
+
+        <a href="/kiosks"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path.startswith('/hardware') %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">🖥️</span>
+          <span>하드웨어관리</span>
+        </a>
+
+        <div class="mt-4 mb-1 px-4 text-[11px] font-semibold text-slate-400">
+          매출
+        </div>
+
+        <a href="/sales"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path == '/sales' %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">📈</span>
+          <span>매출</span>
+        </a>
         {% endif %}
       </nav>
 
@@ -136,16 +136,11 @@
     </aside>
     {% endif %}
 
-    {# ================= 메인 영역 ================= #}
+    {# ========== 메인 영역 ========== #}
     <main class="flex-1 min-h-screen">
-      {# 모바일 상단바 (햄버거 버튼) #}
       <header class="md:hidden h-14 px-4 flex items-center justify-between bg-white border-b">
-        <button id="menuBtn" class="text-xl">
-          ☰
-        </button>
-        <span class="text-sm font-semibold">
-          관리자페이지
-        </span>
+        <button id="menuBtn" class="text-xl">☰</button>
+        <span class="text-sm font-semibold">관리자페이지</span>
       </header>
 
       <div class="p-4 md:p-8">
@@ -155,7 +150,21 @@
 
   </div>
 
-  {# ========== 모바일 햄버거 & 닫기 토글 JS ========== #}
+  {# ========== 푸터 ========== #}
+  {% block footer %}
+<footer class="w-full bg-white border-t mt-8 py-3 text-center text-[12px] text-slate-600">
+  (04585) 서울시 중구 다산로42다길 28  
+  상호: 더키  | 대표: 서현덕 | 사업자등록번호: 562-22-02323 <br>
+  개인정보보호책임자: 서현덕 (deokey24@gmail.com)  
+  고객센터: 010-7715-3722
+  <div class="mt-1">
+    <a href="" class="hover:underline">개인정보처리방침</a> |
+    <a href="" class="hover:underline">이용약관</a>
+  </div>
+  <div class="mt-1 text-[11px]">© 2025 DEOKEY Corp. All rights reserved.</div>
+</footer>
+  {% endblock %}
+
   <script>
     const menuBtn = document.getElementById("menuBtn");
     const closeBtn = document.getElementById("closeBtn");
