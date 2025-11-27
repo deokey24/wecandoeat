@@ -41,15 +41,9 @@ async def kiosk_handshake(
         kiosk_id=kiosk.id,
         store_id=kiosk.store_id,
         api_key=kiosk.api_key,
-        # ★ 평문 패스워드 내려줌 (컬럼명에 맞게 조정)
-        kiosk_password=kiosk.kiosk_password,  # 또는 kiosk.password 등 실제 모델에 맞게
-    
-        
+        kiosk_password=kiosk.kiosk_password,
         pairing_code=kiosk.pair_code_4,
-        
         config_version=kiosk.config_version,
-        
-        # ★ config는 그대로 Pydantic 모델로 넘겨도 됨
         config=config,
     )
 
@@ -76,19 +70,24 @@ async def kiosk_heartbeat(
         kiosk,
         app_version=payload.app_version,
         ip=client_ip,
-        # Pydantic v2 기준이면 model_dump(), v1이면 dict()
         status_payload=payload.model_dump(),
     )
-    
+
     # 🔹 설정 업데이트 필요 여부 계산
     has_config_update = False
     if payload.current_config_version is not None:
         if payload.current_config_version < (kiosk.config_version or 1):
             has_config_update = True
 
+    # 🔹 필요할 때만 config 내려주기 (필드 추가라서 기존 앱과 완전 호환)
+    config = None
+    if has_config_update:
+        config = await kiosk_service.build_config(db, kiosk)
+
     return {
         "ok": True,
         "server_time": datetime.now(timezone.utc).isoformat(),
         "config_version": kiosk.config_version,
         "has_config_update": has_config_update,
+        "config": config,  # ← 새 앱에서 사용할 수 있는 필드
     }

@@ -3,15 +3,13 @@ import secrets
 from datetime import datetime, timezone
 from typing import Optional, List
 
-import random
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.back.models.kiosk import Kiosk, KioskStatusLog, KioskScreenImage
+from app.back.models.kiosk import Kiosk, KioskStatusLog
 from app.back.models.vending import VendingSlot, VendingSlotProduct
-from app.back.models.product import Product
+from app.back.models.kiosk_product import KioskProduct  # 🔁 Product 대신 KioskProduct
 from app.back.schemas.kiosk import KioskConfig, SlotConfig
 
 
@@ -29,16 +27,16 @@ async def get_by_id(db: AsyncSession, kiosk_id: int) -> Optional[Kiosk]:
 
 async def get_by_code(db: AsyncSession, code: str) -> Optional[Kiosk]:
     result = await db.execute(
-        select(Kiosk).
-        options(
+        select(Kiosk)
+        .options(
             selectinload(Kiosk.screen_images),
         )
-        .where(Kiosk.code == code))
+        .where(Kiosk.code == code)
+    )
     return result.scalar_one_or_none()
 
 
 def generate_api_key() -> str:
-    # 설치 시 생성할 키오스크 전용 API Key
     return secrets.token_urlsafe(32)
 
 
@@ -49,7 +47,6 @@ async def update_handshake(
     app_version: str,
     ip: Optional[str],
 ):
-    """핸드셰이크 시 키오스크 기본 정보 업데이트"""
     kiosk.device_uuid = device_uuid
     kiosk.app_version = app_version
     kiosk.last_ip = ip
@@ -70,7 +67,6 @@ async def update_heartbeat(
     ip: Optional[str],
     status_payload: dict,
 ):
-    """하트비트 수신 시 상태 업데이트 + 로그 기록"""
     kiosk.app_version = app_version
     kiosk.last_ip = ip
     kiosk.last_heartbeat_at = datetime.now(timezone.utc)
@@ -90,12 +86,14 @@ async def update_heartbeat(
 async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
     """
     키오스크에 연결된 슬롯 + 슬롯별 상품/재고 구성 정보
+    - 내부 데이터는 kiosk_products 스냅샷 기준
+    - JSON 구조는 기존 SlotConfig/KioskConfig 그대로 유지
     """
     stmt = (
         select(
             VendingSlot,
             VendingSlotProduct,
-            Product,
+            KioskProduct,
         )
         .join(
             VendingSlotProduct,
@@ -103,8 +101,8 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
             isouter=True,
         )
         .join(
-            Product,
-            Product.id == VendingSlotProduct.product_id,
+            KioskProduct,
+            KioskProduct.id == VendingSlotProduct.kiosk_product_id,
             isouter=True,
         )
         .where(VendingSlot.kiosk_id == kiosk.id)
@@ -115,8 +113,9 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
 
     slots: List[SlotConfig] = []
 
-    for slot, vsp, product in rows:
-        if vsp and product:
+    for slot, vsp, kp in rows:
+        if vsp and kp:
+            # 🔹 슬롯에 상품이 매핑된 경우 (kiosk_product 기준)
             slots.append(
                 SlotConfig(
                     slot_id=slot.id,
@@ -126,27 +125,28 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     label=slot.label,
                     max_capacity=slot.max_capacity,
 
-                    # 상품 기본 정보
-                    product_id=product.id,
-                    product_name=product.name,
-                    price=product.price,
+                    # 상품 기본 정보 (이전에 Product에서 가져오던 필드들을 KioskProduct에서 그대로 사용)
+                    product_id=kp.id,          # ← 앱에서 쓰는 ID (이제 kiosk_product.id)
+                    product_name=kp.name,
+                    price=kp.price,
 
-                    # ★ 성인여부
-                    is_adult_only=product.is_adult_only,
+                    # 성인 여부
+                    is_adult_only=kp.is_adult_only,
 
-                    # ★ 이미지들
-                    image_url=product.image_url,
-                    detail_image_url=product.detail_url,
+                    # 이미지들
+                    image_url=kp.image_url,
+                    detail_image_url=kp.detail_url,
 
-                    # ★ 카테고리 (기기 / 카트리지)
-                    category_code=product.category,
-                    category_name=product.category,   # 혹시 한글명 따로 있으면 매핑 가능
+                    # 카테고리
+                    category_code=kp.category,
+                    category_name=kp.category,
 
                     # 재고
                     current_stock=vsp.current_stock,
                 )
             )
         else:
+            # 🔹 비어있는 슬롯
             slots.append(
                 SlotConfig(
                     slot_id=slot.id,
@@ -156,7 +156,6 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     label=slot.label,
                     max_capacity=slot.max_capacity,
 
-                    # 비어있는 슬롯
                     product_id=None,
                     product_name=None,
                     price=None,
@@ -172,10 +171,8 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
     # 보호화면 이미지
     screensaver_images: List[str] = []
     if kiosk.screen_images:
-        for img in sorted(
-            [i for i in kiosk.screen_images if i.is_active],
-            key=lambda x: x.sort_order,
-        ):
+        active_images = [i for i in kiosk.screen_images if i.is_active]
+        for img in sorted(active_images, key=lambda x: x.sort_order or 0):
             screensaver_images.append(img.image_url)
 
     return KioskConfig(
@@ -184,15 +181,9 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
         slots=slots,
         screensaver_images=screensaver_images,
     )
-    
-async def bump_config_version(
-    db: AsyncSession,
-    kiosk_id: int,
-) -> None:
-    """
-    해당 키오스크의 config_version을 +1 해주는 공통 함수.
-    (설정/슬롯/상품 매핑/화면보호 이미지 등 '구성'이 바뀌는 모든 곳에서 이 함수만 호출)
-    """
+
+
+async def bump_config_version(db: AsyncSession, kiosk_id: int) -> None:
     kiosk = await db.get(Kiosk, kiosk_id)
     if not kiosk:
         return
