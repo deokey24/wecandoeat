@@ -14,6 +14,7 @@ class KioskHandshakeRequest(BaseModel):
 class SlotConfig(BaseModel):
     """
     자판기 슬롯 1칸에 대한 구성 정보 + 매핑된 상품 정보
+    (재고 정보는 포함하지 않음)
     """
     # 슬롯 / 보드 위치 정보
     slot_id: int
@@ -42,12 +43,12 @@ class SlotConfig(BaseModel):
     category_name: Optional[str] = None
 
 
-
 class KioskConfig(BaseModel):
     kiosk_id: int
     kiosk_name: str
-    slots: List[SlotConfig] = []
-    screensaver_images: List[str] = []
+    # 기본값은 빈 리스트 (mutable default는 default_factory 사용)
+    slots: List[SlotConfig] = Field(default_factory=list)
+    screensaver_images: List[str] = Field(default_factory=list)
 
 
 class KioskHandshakeResponse(BaseModel):
@@ -58,12 +59,12 @@ class KioskHandshakeResponse(BaseModel):
     # 당장은 평문으로 사용하는 키오스크 비밀번호 (관리자 진입 등)
     # 추후 해시/검증 API 방식으로 교체 예정
     kiosk_password: str
-    
+
     pairing_code: str
-    
+
     config_version: int
 
-    # 키오스크 구성 정보
+    # 키오스크 구성 정보 (재고 없음)
     config: KioskConfig
 
 
@@ -71,17 +72,18 @@ class KioskHeartbeatRequest(BaseModel):
     device_uuid: str
     app_version: str
 
-    board_connected: bool = True           # 자판기 보드 연결 여부
-    errors: List[str] = Field(default_factory=list)  # 에러 메시지들
+    board_connected: bool = True                      # 자판기 보드 연결 여부
+    errors: List[str] = Field(default_factory=list)   # 에러 메시지들
 
-    temperature: Optional[float] = None    # 내부 온도 등
-    door_open: Optional[bool] = None       # 문 열림 여부
-    
-    current_config_version: Optional[int] = None  # 🔹 앱이 들고 있는 버전
+    temperature: Optional[float] = None               # 내부 온도 등
+    door_open: Optional[bool] = None                  # 문 열림 여부
+
+    current_config_version: Optional[int] = None      # 앱이 들고 있는 설정 버전
 
     # 기타 확장용 필드 (배터리, 네트워크 상태 등 자유롭게)
     extra: Optional[Dict[str, Any]] = None
-    
+
+
 class InventoryItem(BaseModel):
     """
     자판기 한 슬롯의 재고 정보.
