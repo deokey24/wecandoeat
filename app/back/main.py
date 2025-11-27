@@ -1,14 +1,13 @@
+# app/back/main.py
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 
 from .core.config import settings
-
-from app.back.core.config import settings
-from app.back.core.db import init_db
+from .core.db import init_db
 from .routers import (
     web_auth,
     web_dashboard,
@@ -21,15 +20,15 @@ from .routers import (
     web_sales,
     api_qr_auth,
     web_qr_auth,
-    web_public_files
+    web_public_files,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(
     title="Wecandoit Admin",
-    docs_url=None,
-    redoc_url=None,
+    docs_url="/api/docs",      # 필요 없으면 None 으로 바꿔도 됨
+    redoc_url="/api/redoc",
 )
 
 # 세션 (로그인 상태 유지용)
@@ -68,10 +67,12 @@ app.include_router(api_qr_auth.router)
 app.include_router(web_qr_auth.router)
 app.include_router(web_public_files.router)
 
+
 # 헬스체크 (Render용 포함)
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
 
 @app.on_event("startup")
 async def on_startup():
