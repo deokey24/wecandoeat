@@ -65,7 +65,7 @@ async def send_auth_sms(to_phone: str, auth_code: str) -> Dict[str, Any]:
     }
 
     # 🔥 여기 content 에는 한글 포함 OK (UTF-8 JSON 으로 나감)
-    content = f"[Wecandoeat] 인증번호 [{auth_code}]를 입력해 주세요."
+    content = f"[전자담배24시] 인증번호 [{auth_code}]를 입력해 주세요."
 
     body = {
         "type": "SMS",
