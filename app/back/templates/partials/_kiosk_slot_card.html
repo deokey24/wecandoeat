@@ -6,7 +6,8 @@
      data-slot-max="{{ s.max_capacity }}"
      data-slot-stock="{{ s.current_stock }}"
      data-slot-low="{{ s.low_stock_alarm }}"
-     data-slot-product-id="{{ s.product_id or '' }}">
+     data-slot-product-id="{{ s.product_id or '' }}"
+     data-kiosk-product-id="{{ s.kiosk_product_id or '' }}">
 
   <!-- 상단: 슬롯 라벨/보드코드 + 편집/삭제 버튼 -->
   <div class="flex items-start justify-between gap-1">
@@ -18,39 +19,52 @@
         {{ s.board_code }}
       </div>
     </div>
-    {% if s.product_id %}
+
+    {% if s.kiosk_product_id %}
       <div class="flex items-end gap-1">
+        <!-- 슬롯 재배치(상품 변경 / 재고 수정) -->
         <button type="button"
                 class="text-[10px] px-1.5 py-0.5 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 js-open-slot-modal">
           ✏
         </button>
-        <button type="button"
-                class="text-[10px] px-1.5 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 js-slot-clear-btn"
-                data-slot-id="{{ s.slot_id }}">
-          🗑
-        </button>
+        <!-- 슬롯 상품 삭제 -->
+        <form method="post"
+              action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/clear"
+              onsubmit="return confirm('이 슬롯의 상품 매핑을 삭제할까요?');">
+          <button type="submit"
+                  class="text-[10px] px-1.5 py-0.5 rounded border border-red-300 text-red-600 hover:bg-red-50">
+            ✕
+          </button>
+        </form>
       </div>
     {% endif %}
   </div>
 
-  <!-- 상품 이미지 / 정보 -->
-  {% if s.product_id %}
-    <div class="flex flex-col items-center text-center gap-1 mt-1">
-      <div class="w-full h-28 rounded-md bg-slate-100 overflow-hidden flex items-center justify-center">
-        {% if s.image_url %}
-          <img src="{{ s.image_url }}" alt="{{ s.product_name }}"
-               class="w-full h-full object-contain" />
-        {% else %}
-          <span class="text-[11px] text-slate-400">NO IMAGE</span>
-        {% endif %}
-      </div>
-      <div class="w-full">
+  <!-- 중앙: 상품 썸네일/정보 or 비어있을 때 안내 -->
+  {% if s.kiosk_product_id %}
+    <div class="flex gap-3 items-center mt-1">
+      {% if s.image_url %}
+        <div class="w-14 h-14 rounded overflow-hidden bg-slate-100 flex-shrink-0">
+          <img src="{{ s.image_url }}" alt="{{ s.product_name }}" class="w-full h-full object-cover">
+        </div>
+      {% else %}
+        <div class="w-14 h-14 rounded bg-slate-100 flex items-center justify-center text-[10px] text-slate-400 flex-shrink-0">
+          No Image
+        </div>
+      {% endif %}
+      <div class="flex-1 min-w-0">
         <div class="text-xs font-medium line-clamp-2">
           {{ s.product_name }}
         </div>
         <div class="text-[11px] text-blue-600 font-semibold mt-0.5">
           {{ "{:,}".format(s.price) }}원
         </div>
+
+        <!-- 🔹 슬롯에 배치된 상품 자체 수정 링크 -->
+        <a href="/kiosks/{{ kiosk.id }}/products/{{ s.kiosk_product_id }}/edit"
+           class="mt-1 inline-block text-[11px] text-blue-500 underline">
+          이 상품 정보 수정하기
+        </a>
       </div>
     </div>
   {% else %}
@@ -60,38 +74,29 @@
         매핑된 상품 없음
       </div>
       <button type="button"
-              class="text-[11px] px-2 py-1 rounded border border-blue-500 text-blue-600 hover:bg-blue-50 js-open-slot-modal">
+              class="px-2 py-1 rounded text-[11px] bg-blue-600 text-white hover:bg-blue-700 js-open-slot-modal">
         + 상품 추가
       </button>
     </div>
   {% endif %}
 
-  <!-- 재고 조절 -->
-  <div class="mt-2 flex items-center justify-between">
-    <div class="flex items-center gap-1">
-      <form method="post"
-            action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/stock">
-        <input type="hidden" name="action" value="dec" />
-        <button type="submit"
-                class="w-6 h-6 flex items-center justify-center rounded border text-xs hover:bg-slate-100">
-          -
-        </button>
-      </form>
-      <div class="min-w-[2rem] text-center text-sm font-semibold">
-        {{ s.current_stock }}
-      </div>
-      <form method="post"
-            action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/stock">
-        <input type="hidden" name="action" value="inc" />
-        <button type="submit"
-                class="w-6 h-6 flex items-center justify-center rounded border text-xs hover:bg-slate-100">
-          +
-        </button>
-      </form>
+  <!-- 하단: 재고/용량 표시 -->
+  <div class="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+    <div class="flex flex-col">
+      <span class="text-slate-400">용량</span>
+      <span class="font-mono">{{ s.max_capacity }}</span>
+    </div>
+    <div class="flex flex-col">
+      <span class="text-slate-400">재고</span>
+      <span class="font-mono">{{ s.current_stock }}</span>
+    </div>
+    <div class="flex flex-col">
+      <span class="text-slate-400">알림</span>
+      <span class="font-mono">{{ s.low_stock_alarm }}</span>
     </div>
   </div>
 
-  <!-- 원격배출 -->
+  <!-- 원격배출 (아직 동작 미정이라면 버튼만 유지) -->
   <div class="mt-2">
     <button type="button"
             class="w-full text-[11px] px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700">

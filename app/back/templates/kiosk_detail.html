@@ -221,49 +221,44 @@
 </div>
 
 <script>
-  const modal = document.getElementById('slot-modal');
-  const slotIdInput = document.getElementById('slot_id_input');
-  const slotInfoLabel = document.getElementById('slot_info_label');
-  const slotForm = document.getElementById('slot-form');
+  const slotModal = document.getElementById("slot-modal");
+  const slotForm = document.getElementById("slot-form");
+  const slotIdInput = document.getElementById("slot_id_input");
+  const slotInfoLabel = document.getElementById("slot_info_label");
 
-  const inputMax = document.getElementById('input_max_capacity');
-  const inputStock = document.getElementById('input_current_stock');
-  const inputLow = document.getElementById('input_low_stock_alarm');
-  const productSelect = document.getElementById('product_select');
+  const inputMax = document.getElementById("input_max_capacity");
+  const inputStock = document.getElementById("input_current_stock");
+  const inputLow = document.getElementById("input_low_stock_alarm");
 
-  /* 상품 카드 검색 필터 */
-function filterProductCards() {
-  const q = document.getElementById("product_search").value.toLowerCase();
-  document.querySelectorAll("#product_list .product-card").forEach(card => {
-    const name = card.dataset.name;
-    card.style.display = name.includes(q) ? "block" : "none";
-  });
-}
+  const productSelect = document.getElementById("product_select");
 
-/* 상품 선택 */
-function selectProduct(id, element) {
-  // hidden input에 값 저장
-  document.getElementById("product_select").value = id;
+  /* 상품 선택 (우측 카드 클릭 시) */
+  function selectProduct(id, element) {
+    // hidden input에 값 저장
+    productSelect.value = id;
 
-  // 전체 카드 reset
-  document.querySelectorAll(".product-card")
-    .forEach(c => c.classList.remove("ring", "ring-blue-500"));
+    // 전체 카드 reset
+    document.querySelectorAll(".product-card")
+      .forEach(c => c.classList.remove("ring", "ring-blue-500"));
 
-  // 선택된 카드 강조
-  element.classList.add("ring", "ring-blue-500");
-}
+    // 선택된 카드 강조
+    element.classList.add("ring", "ring-blue-500");
+  }
 
+  /* 슬롯 모달 열기/초기화 */
   function attachSlotModalHandlers() {
-    document.querySelectorAll('.js-open-slot-modal').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const card = btn.closest('[data-slot-id]');
+    document.querySelectorAll(".js-open-slot-modal").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest("[data-slot-id]");
+        if (!card) return;
+
         const slotId = card.dataset.slotId;
         const label = card.dataset.slotLabel;
         const board = card.dataset.slotBoard;
         const max = card.dataset.slotMax || 0;
         const stock = card.dataset.slotStock || 0;
         const low = card.dataset.slotLow || 0;
-        const productId = card.dataset.slotProductId;
+        const productId = card.dataset.slotProductId || "";
 
         slotIdInput.value = slotId;
         slotInfoLabel.textContent = `${label} (보드코드: ${board})`;
@@ -272,51 +267,64 @@ function selectProduct(id, element) {
         inputStock.value = stock;
         inputLow.value = low;
 
+        // 마스터 상품 select 값 초기화
         if (productId) {
           productSelect.value = productId;
         } else {
           productSelect.selectedIndex = -1;
         }
 
+        // 🔹 여기! 슬롯별로 올바른 라우트로 POST 되도록 action 설정
         slotForm.action = `/kiosks/{{ kiosk.id }}/slots/${slotId}/assign`;
 
-        modal.classList.remove('hidden');
+        slotModal.classList.remove("hidden");
       });
     });
   }
 
-  function attachSlotClearHandlers() {
-    document.querySelectorAll('.js-slot-clear-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const slotId = btn.dataset.slotId;
-        const ok = confirm('이 슬롯을 비우시겠습니까?');
-        if (!ok) return;
+  /* 슬롯에 배치된 상품 자체 수정 버튼 핸들러 */
+  function attachEditSlotProductHandlers() {
+    document.querySelectorAll(".js-edit-slot-product").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const card = btn.closest("[data-slot-id]");
+        if (!card) return;
 
-        const form = document.createElement('form');
-        form.method = 'post';
-        form.action = `/kiosks/{{ kiosk.id }}/slots/${slotId}/clear`;
+        const kioskProductId = card.dataset.kioskProductId;
+        if (!kioskProductId) {
+          alert("이 슬롯에는 아직 상품이 매핑되어 있지 않습니다.");
+          return;
+        }
 
-        document.body.appendChild(form);
-        form.submit();
+        // 서버 라우트: /kiosks/{kiosk_id}/products/{kiosk_product_id}/edit
+        const kioskId = {{ kiosk.id }};
+        window.location.href = `/kiosks/${kioskId}/products/${kioskProductId}/edit`;
       });
     });
   }
 
-  attachSlotModalHandlers();
-  attachSlotClearHandlers();
-
-  document.querySelectorAll('.js-close-slot-modal').forEach(btn => {
-    btn.addEventListener('click', () => {
-      modal.classList.add('hidden');
+  /* 모달 닫기 버튼 */
+  function attachCloseModalHandlers() {
+    document.querySelectorAll(".js-close-slot-modal").forEach(btn => {
+      btn.addEventListener("click", () => {
+        slotModal.classList.add("hidden");
+      });
     });
-  });
+  }
 
+  /* 상품 검색(select option 필터링) */
   function filterProductOptions() {
-    const keyword = document.getElementById('product_search').value.toLowerCase();
+    const keyword = document.getElementById("product_search").value.toLowerCase();
     Array.from(productSelect.options).forEach(opt => {
       const text = opt.text.toLowerCase();
       opt.hidden = keyword && !text.includes(keyword);
     });
   }
+
+  // 초기 바인딩
+  document.addEventListener("DOMContentLoaded", () => {
+    attachSlotModalHandlers();
+    attachEditSlotProductHandlers();
+    attachCloseModalHandlers();
+  });
 </script>
 {% endblock %}

@@ -35,8 +35,13 @@ class Product(Base):
         onupdate=datetime.utcnow,
         nullable=False,
     )
+    
+    kiosk_products = relationship(
+        "KioskProduct",
+        back_populates="base_product",
+        cascade="all, delete-orphan",
+    )
 
-    vending_slots = relationship("VendingSlotProduct", back_populates="product",cascade="all, delete-orphan",)
 
 
 # ================= Pydantic =================

@@ -46,11 +46,17 @@ class VendingSlotProduct(Base):
 
     id = Column(BigInteger, primary_key=True, index=True)
     slot_id = Column(BigInteger, ForeignKey("vending_slots.id"), nullable=False)
-    product_id = Column(BigInteger, ForeignKey("products.id"), nullable=False)
+
+    # 🔹 마스터 Product가 아니라, 키오스크 전용 KioskProduct를 바라봄
+    kiosk_product_id = Column(
+        BigInteger,
+        ForeignKey("kiosk_products.id"),
+        nullable=False,
+    )
 
     current_stock = Column(Integer, nullable=False, default=0)
     low_stock_alarm = Column(Integer, nullable=False, default=0)
     is_active = Column(Boolean, nullable=False, default=True)
 
     slot = relationship("VendingSlot", back_populates="slot_product")
-    product = relationship("Product", back_populates="vending_slots")
+    kiosk_product = relationship("KioskProduct", back_populates="slot_products")

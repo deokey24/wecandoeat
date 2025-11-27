@@ -16,6 +16,7 @@ from app.back.models.store import Store
 from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.product import Product
 from app.back.services import kiosk_service, user_service
+from app.back.models.kiosk_product import KioskProduct
 
 templates = Jinja2Templates(directory="app/back/templates")
 router = APIRouter()
@@ -306,17 +307,17 @@ async def kiosk_detail_page(
 
     mode = request.query_params.get("mode", "view")
 
-    # 슬롯 + 재고 + 상품 조인 (LEFT OUTER JOIN)
+    # 슬롯 + 재고 + 키오스크 전용 상품 스냅샷 조인
     stmt = (
-        select(VendingSlot, VendingSlotProduct, Product)
+        select(VendingSlot, VendingSlotProduct, KioskProduct)
         .join(
             VendingSlotProduct,
             VendingSlotProduct.slot_id == VendingSlot.id,
             isouter=True,
         )
         .join(
-            Product,
-            Product.id == VendingSlotProduct.product_id,
+            KioskProduct,
+            KioskProduct.id == VendingSlotProduct.kiosk_product_id,
             isouter=True,
         )
         .where(VendingSlot.kiosk_id == kiosk.id)
@@ -327,7 +328,7 @@ async def kiosk_detail_page(
 
     # 층(row)별로 묶기
     layers: dict[int, list[dict]] = {}
-    for slot, vsp, product in rows:
+    for slot, vsp, kp in rows:
         layer = slot.row
         if layer not in layers:
             layers[layer] = []
@@ -337,14 +338,18 @@ async def kiosk_detail_page(
         layers[layer].append(
             {
                 "slot_id": slot.id,
-                "label": label,
+                "row": slot.row,
+                "col": slot.col,
                 "board_code": slot.board_code,
+                "label": label,
                 "max_capacity": slot.max_capacity,
-                "is_enabled": slot.is_enabled,
-                "product_id": product.id if product else None,
-                "product_name": product.name if product else None,
-                "price": product.price if product else None,
-                "image_url": product.image_url if product else None,
+                # 🔹 모달에서 기본 상품 선택값으로 사용할 것 (마스터 Product ID)
+                "product_id": kp.base_product_id if kp else None,
+                # 🔹 슬롯에 매핑된 키오스크 전용 상품 ID
+                "kiosk_product_id": vsp.kiosk_product_id if vsp else None,
+                "product_name": kp.name if kp else None,
+                "price": kp.price if kp else None,
+                "image_url": kp.image_url if kp else None,
                 "current_stock": vsp.current_stock if vsp else 0,
                 "low_stock_alarm": vsp.low_stock_alarm if vsp else 0,
             }
@@ -352,6 +357,7 @@ async def kiosk_detail_page(
 
     sorted_layers = sorted(layers.items(), key=lambda x: x[0])
 
+    # 상품 선택 모달에서 사용할 '마스터 Product 목록'
     products = (await db.execute(select(Product))).scalars().all()
 
     screen_images = sorted(
@@ -371,6 +377,7 @@ async def kiosk_detail_page(
             "screen_images": screen_images,
         },
     )
+    
 
 
 # ---------------------------------------------------------------------------
@@ -461,7 +468,7 @@ async def kiosk_slot_clear(
 async def kiosk_slot_assign(
     kiosk_id: int,
     slot_id: int,
-    product_id: int = Form(...),
+    product_id: int = Form(...),         # 마스터 Product ID
     max_capacity: int = Form(0),
     current_stock: int = Form(0),
     low_stock_alarm: int = Form(0),
@@ -472,6 +479,7 @@ async def kiosk_slot_assign(
     if not current_user:
         return RedirectResponse("/login", status_code=303)
 
+    # 🔹 권한 확인
     kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
     if not kiosk:
         return templates.TemplateResponse(
@@ -480,10 +488,8 @@ async def kiosk_slot_assign(
             status_code=403,
         )
 
-    slot_stmt = select(VendingSlot).where(VendingSlot.id == slot_id)
-    slot_result = await db.execute(slot_stmt)
-    slot = slot_result.scalar_one_or_none()
-
+    # 슬롯 존재 & 소속 확인
+    slot = await db.get(VendingSlot, slot_id)
     if not slot or slot.kiosk_id != kiosk_id:
         return templates.TemplateResponse(
             "forbidden.html",
@@ -491,9 +497,46 @@ async def kiosk_slot_assign(
             status_code=404,
         )
 
+    # 마스터 Product 로드
+    base_product = await db.get(Product, product_id)
+    if not base_product:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "존재하지 않는 상품입니다."},
+            status_code=404,
+        )
+
+    # 동일 키오스크 + 동일 base_product 로 이미 생성된 스냅샷이 있는지 확인
+    stmt = select(KioskProduct).where(
+        KioskProduct.kiosk_id == kiosk_id,
+        KioskProduct.base_product_id == base_product.id,
+    )
+    result = await db.execute(stmt)
+    kiosk_product = result.scalar_one_or_none()
+
+    # 없으면 새로 스냅샷 생성
+    if kiosk_product is None:
+        kiosk_product = KioskProduct(
+            kiosk_id=kiosk_id,
+            base_product_id=base_product.id,
+            name=base_product.name,
+            code=base_product.code,
+            category=base_product.category,
+            price=base_product.price,
+            is_adult_only=base_product.is_adult_only,
+            image_url=base_product.image_url,
+            detail_url=base_product.detail_url,
+            description=base_product.description,
+            is_active=base_product.is_active,
+        )
+        db.add(kiosk_product)
+        await db.flush()  # id 확보
+
+    # 슬롯 용량 갱신
     slot.max_capacity = max_capacity
     slot.updated_at = datetime.utcnow()
 
+    # 슬롯-상품 매핑(vending_slot_products)
     vsp_stmt = select(VendingSlotProduct).where(
         VendingSlotProduct.slot_id == slot_id
     )
@@ -503,14 +546,14 @@ async def kiosk_slot_assign(
     if vsp is None:
         vsp = VendingSlotProduct(
             slot_id=slot_id,
-            product_id=product_id,
+            kiosk_product_id=kiosk_product.id,
             current_stock=current_stock,
             low_stock_alarm=low_stock_alarm,
             is_active=True,
         )
         db.add(vsp)
     else:
-        vsp.product_id = product_id
+        vsp.kiosk_product_id = kiosk_product.id
         vsp.current_stock = current_stock
         vsp.low_stock_alarm = low_stock_alarm
         vsp.is_active = True
@@ -518,7 +561,10 @@ async def kiosk_slot_assign(
     await db.commit()
     await kiosk_service.bump_config_version(db, kiosk_id)
 
-    return RedirectResponse(f"/kiosks/{kiosk_id}?mode=edit", status_code=303)
+    return RedirectResponse(
+        f"/kiosks/{kiosk_id}?mode=edit",
+        status_code=303,
+    )
 
 
 @router.post("/kiosks/{kiosk_id}/screensaver/upload")
@@ -603,3 +649,119 @@ async def kiosk_screensaver_delete(
         await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
+
+# ---------------------------------------------------------------------------
+# 슬롯에 배치된 "키오스크 전용 상품" 수정 페이지
+# ---------------------------------------------------------------------------
+@router.get("/kiosks/{kiosk_id}/products/{kiosk_product_id}/edit")
+async def kiosk_product_edit_page(
+    kiosk_id: int,
+    kiosk_product_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
+            status_code=403,
+        )
+
+    kp = await db.get(KioskProduct, kiosk_product_id)
+    if not kp or kp.kiosk_id != kiosk_id:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "해당 상품을 찾을 수 없습니다."},
+            status_code=404,
+        )
+
+    return templates.TemplateResponse(
+        "kiosk_product_edit.html",   # 새 템플릿 or 기존 product_edit.html 재활용
+        {
+            "request": request,
+            "kiosk": kiosk,
+            "product": kp,           # 템플릿에서 product.name, product.price 등으로 사용
+        },
+    )
+
+
+@router.post("/kiosks/{kiosk_id}/products/{kiosk_product_id}/edit")
+async def kiosk_product_edit_submit(
+    kiosk_id: int,
+    kiosk_product_id: int,
+    request: Request,
+    name: str = Form(...),
+    price: int = Form(...),
+    code: str | None = Form(None),
+    category: str | None = Form(None),
+    is_adult_only: bool = Form(False),
+    description: str | None = Form(None),
+    is_active: bool = Form(True),
+
+    # 파일 업로드 (선택)
+    product_image: UploadFile | None = File(None),
+    detail_image: UploadFile | None = File(None),
+
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
+            status_code=403,
+        )
+
+    kp = await db.get(KioskProduct, kiosk_product_id)
+    if not kp or kp.kiosk_id != kiosk_id:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {"request": request, "message": "해당 상품을 찾을 수 없습니다."},
+            status_code=404,
+        )
+
+    # ── 1) 기존 이미지 URL을 기본값으로 유지
+    image_url = kp.image_url
+    detail_url = kp.detail_url
+
+    # ── 2) 상품 이미지 교체 (파일이 새로 올라온 경우에만)
+    if product_image and product_image.filename:
+        image_url = await upload_image_to_r2(
+            product_image,
+            prefix=f"kiosk/{kiosk.code}/products",
+        )
+
+    # ── 3) 상세 이미지 교체 (파일이 새로 올라온 경우에만)
+    if detail_image and detail_image.filename:
+        detail_url = await upload_image_to_r2(
+            detail_image,
+            prefix=f"kiosk/{kiosk.code}/products/detail",
+        )
+
+    # ── 4) 나머지 필드 업데이트
+    kp.name = name
+    kp.price = price
+    kp.code = code or None
+    kp.category = category or None
+    kp.is_adult_only = is_adult_only
+    kp.description = description or None
+    kp.is_active = is_active
+    kp.image_url = image_url
+    kp.detail_url = detail_url
+
+    await db.commit()
+    await kiosk_service.bump_config_version(db, kiosk_id)
+
+    return RedirectResponse(
+        f"/kiosks/{kiosk_id}?mode=edit",
+        status_code=303,
+    )
