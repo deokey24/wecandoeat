@@ -320,6 +320,20 @@
     });
   }
 
+    function filterProductCards() {
+    const keyword = document.getElementById("product_search").value.toLowerCase();
+
+    document.querySelectorAll("#product_list .product-card").forEach(card => {
+      const name = (card.dataset.name || "").toLowerCase();
+
+      if (!keyword || name.includes(keyword)) {
+        card.style.display = "";
+      } else {
+        card.style.display = "none";
+      }
+    });
+  }
+
   // 초기 바인딩
   document.addEventListener("DOMContentLoaded", () => {
     attachSlotModalHandlers();

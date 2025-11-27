@@ -140,9 +140,6 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     # 카테고리
                     category_code=kp.category,
                     category_name=kp.category,
-
-                    # 재고
-                    current_stock=vsp.current_stock,
                 )
             )
         else:
@@ -164,7 +161,6 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     detail_image_url=None,
                     category_code=None,
                     category_name=None,
-                    current_stock=None,
                 )
             )
 

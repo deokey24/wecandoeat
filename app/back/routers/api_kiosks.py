@@ -9,8 +9,10 @@ from app.back.schemas.kiosk import (
     KioskHandshakeRequest,
     KioskHandshakeResponse,
     KioskHeartbeatRequest,
+    KioskInventoryUpdateRequest,
+    KioskInventoryUpdateResult,
 )
-from app.back.services import kiosk_service
+from app.back.services import kiosk_service, vending_service
 
 router = APIRouter(prefix="/api/kiosks", tags=["kiosk-api"])
 
@@ -91,3 +93,56 @@ async def kiosk_heartbeat(
         "has_config_update": has_config_update,
         "config": config,  # ← 새 앱에서 사용할 수 있는 필드
     }
+    
+@router.post("/{kiosk_id}/inventory", response_model=KioskInventoryUpdateResult)
+async def kiosk_inventory_update(
+        kiosk_id: int,
+        payload: KioskInventoryUpdateRequest,
+        db: AsyncSession = Depends(get_db),
+        x_kiosk_api_key: str = Header(default=None),
+        request: Request | None = None,
+    ):
+        """
+        키오스크 앱 → 서버 재고 동기화 API
+
+        - mode="partial": 전달된 슬롯들만 재고 업데이트
+        - mode="replace": 이 요청을 '전체 재고 스냅샷'으로 보고,
+                        나머지 슬롯은 재고 0 으로 처리
+        """
+        kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+        if not kiosk or not kiosk.is_active:
+            raise HTTPException(status_code=403, detail="Kiosk not allowed")
+
+        if not x_kiosk_api_key or kiosk.api_key != x_kiosk_api_key:
+            raise HTTPException(status_code=401, detail="Invalid kiosk api key")
+
+        # items 를 dict 리스트로 변환 (service 에서 사용하기 쉽게)
+        items = [
+            {
+                "slot_id": item.slot_id,
+                "current_stock": item.current_stock,
+                "low_stock_alarm": item.low_stock_alarm,
+            }
+            for item in payload.items
+        ]
+
+        if payload.mode == "replace":
+            updated, skipped = await vending_service.update_inventory_replace(
+                db=db,
+                kiosk_id=kiosk_id,
+                items=items,
+            )
+        else:
+            # default: partial
+            updated, skipped = await vending_service.update_inventory_partial(
+                db=db,
+                kiosk_id=kiosk_id,
+                items=items,
+            )
+
+        return KioskInventoryUpdateResult(
+            ok=True,
+            updated=updated,
+            skipped=skipped,
+            mode=payload.mode,
+        )

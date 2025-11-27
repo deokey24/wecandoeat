@@ -41,8 +41,6 @@ class SlotConfig(BaseModel):
     category_code: Optional[str] = None
     category_name: Optional[str] = None
 
-    # 현재 재고 (슬롯 기준)
-    current_stock: Optional[int]
 
 
 class KioskConfig(BaseModel):
@@ -83,3 +81,32 @@ class KioskHeartbeatRequest(BaseModel):
 
     # 기타 확장용 필드 (배터리, 네트워크 상태 등 자유롭게)
     extra: Optional[Dict[str, Any]] = None
+    
+class InventoryItem(BaseModel):
+    """
+    자판기 한 슬롯의 재고 정보.
+    - slot_id: handshake/config 에서 내려준 slot_id 를 그대로 사용
+    - current_stock: 현재 실제 재고 개수
+    - low_stock_alarm: (선택) 이 값 이하로 내려가면 알림/표시용
+    """
+    slot_id: int
+    current_stock: int = Field(ge=0)
+    low_stock_alarm: Optional[int] = Field(default=None, ge=0)
+
+
+class KioskInventoryUpdateRequest(BaseModel):
+    """
+    재고 업데이트 요청
+    - mode = "partial": 전달된 슬롯만 업데이트 (부분 수정)
+    - mode = "replace": 이 요청이 '전체 스냅샷'이라고 보고,
+                        전달되지 않은 슬롯은 재고 0 으로 간주
+    """
+    mode: str = Field("partial", pattern="^(partial|replace)$")
+    items: List[InventoryItem]
+
+
+class KioskInventoryUpdateResult(BaseModel):
+    ok: bool = True
+    updated: int
+    skipped: int
+    mode: str
