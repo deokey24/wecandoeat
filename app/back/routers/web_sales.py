@@ -14,8 +14,13 @@ from app.back.models.kiosk import Kiosk
 from app.back.models.order import Order
 from app.back.services import user_service
 
+from zoneinfo import ZoneInfo
+
 templates = Jinja2Templates(directory="app/back/templates")
 router = APIRouter()
+
+KST = ZoneInfo("Asia/Seoul")
+
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +138,8 @@ async def sales_page(
         total_sales += qty * price
 
         ordered_at = order.approved_at or order.created_at
+        if ordered_at is not None:
+            ordered_at = ordered_at.astimezone(KST)
 
         orders.append(
             {

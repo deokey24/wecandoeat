@@ -64,3 +64,4 @@ websocket-client==1.9.0
 websockets==15.0.1
 WMI==1.5.1
 wsproto==1.2.0
+tzdata
