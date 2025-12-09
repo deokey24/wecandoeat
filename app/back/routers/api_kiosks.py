@@ -2,6 +2,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.back.core.db import get_db
@@ -189,4 +190,52 @@ async def get_kiosk_inventory(
     return KioskInventorySnapshot(
         kiosk_id=kiosk_id,
         items=items,
+    )
+
+# =============================
+# 🔹 원격배출 전용 핑 (앱에서 10초마다 호출)
+# =============================
+
+class RemotePingRequest(BaseModel):
+    kiosk_code: str | None = None  # 있으면 검증, 없어도 api_key만으로 통과 가능하도록
+
+
+class RemotePingResponse(BaseModel):
+    ok: bool
+    remote_vend_slot_id: int | None = None
+    server_time: str
+
+
+@router.post("/{kiosk_id}/remote-ping", response_model=RemotePingResponse)
+async def kiosk_remote_ping(
+    kiosk_id: int,
+    payload: RemotePingRequest,
+    db: AsyncSession = Depends(get_db),
+    x_kiosk_api_key: str = Header(default=None),
+    request: Request | None = None,
+):
+    """
+    키오스크 앱이 10초마다 호출하는 '원격배출 전용 핑' 엔드포인트.
+    - 서버 메모리에 저장된 원격배출 슬롯이 있으면 한 번만 내려주고 삭제.
+    - 지금은 배출 결과 ACK 는 받지 않는 MVP 버전.
+    """
+    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    if not kiosk or not kiosk.is_active:
+        raise HTTPException(status_code=403, detail="Kiosk not allowed")
+
+    # 간단 인증: api_key만 확인 (필요시 kiosk_code도 같이 검증 가능)
+    if not x_kiosk_api_key or kiosk.api_key != x_kiosk_api_key:
+        raise HTTPException(status_code=401, detail="Invalid kiosk api key")
+
+    # kiosk_code 까지 체크하고 싶으면 아래 주석 해제
+    # if payload.kiosk_code and payload.kiosk_code != kiosk.code:
+    #     raise HTTPException(status_code=400, detail="kiosk_code mismatch")
+
+    # 🔹 여기서 1회용 원격배출 명령 팝
+    remote_vend_slot_id = kiosk_service.pop_remote_vend_slot(kiosk.id)
+
+    return RemotePingResponse(
+        ok=True,
+        remote_vend_slot_id=remote_vend_slot_id,
+        server_time=datetime.now(timezone.utc).isoformat(),
     )
