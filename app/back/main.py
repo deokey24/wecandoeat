@@ -34,10 +34,10 @@ app = FastAPI(
 )
 
 # 로깅
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s %(name)s - %(message)s",
-)
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="[%(asctime)s] %(levelname)s %(name)s - %(message)s",
+# )
 
 # 세션 (로그인 상태 유지용)
 app.add_middleware(

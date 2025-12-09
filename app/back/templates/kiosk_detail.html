@@ -270,6 +270,12 @@
     });
   }
 
+  //원격배출
+  function confirmRemoteVend(button) {
+    const productName = button.getAttribute("data-product-name") || "해당 상품";
+    return confirm(productName + "을(를) 원격배출 하겠습니까?");
+  }
+
   /* 슬롯에 배치된 상품 자체 수정 버튼 핸들러 (기존 로직 유지) */
   function attachEditSlotProductHandlers() {
     document.querySelectorAll(".js-edit-slot-product").forEach(btn => {

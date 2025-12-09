@@ -1059,3 +1059,41 @@ async def kiosk_product_edit_submit(
         f"/kiosks/{kiosk_id}?mode=edit",
         status_code=303,
     )
+
+
+
+@router.post("/kiosks/{kiosk_id}/slots/{slot_id}/remote-vend")
+async def kiosk_slot_remote_vend(
+    kiosk_id: int,
+    slot_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    키오스크 상세 페이지에서 '원격배출' 버튼을 눌렀을 때 호출.
+    - 권한 체크 후 서버 메모리에 원격배출 명령을 심어둔다.
+    - 실제 배출은 앱이 /remote-ping 응답을 보고 수행.
+    """
+    if not current_user:
+        return RedirectResponse("/login", status_code=303)
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
+        return templates.TemplateResponse(
+            "forbidden.html",
+            {
+                "request": request,
+                "message": "해당 키오스크에 접근할 권한이 없습니다.",
+            },
+            status_code=403,
+        )
+
+    # 🔹 유효시간 30초짜리 원격배출 명령 등록
+    kiosk_service.set_remote_vend_slot(kiosk_id, slot_id, ttl_seconds=30)
+
+    # 별도 메시지 없이 다시 상세페이지로 이동
+    return RedirectResponse(
+        f"/kiosks/{kiosk_id}?mode=view",
+        status_code=303,
+    )

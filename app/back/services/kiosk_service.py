@@ -1,7 +1,10 @@
 # app/back/services/kiosk_service.py
+from __future__ import annotations
+
+
 import secrets
-from datetime import datetime, timezone
-from typing import Optional, List
+from datetime import datetime, timezone, timedelta
+from typing import Optional, List, Dict, TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +14,54 @@ from app.back.models.kiosk import Kiosk, KioskStatusLog
 from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.kiosk_product import KioskProduct  # 🔁 Product 대신 KioskProduct
 from app.back.schemas.kiosk import KioskConfig, SlotConfig
+
+
+
+# =====================================================
+# 🔹 원격배출 명령 (MVP용, 서버 메모리에만 저장)
+# =====================================================
+
+class _RemoteVendEntry(TypedDict):
+    slot_id: int
+    expires_at: datetime  # UTC 기준
+
+
+# kiosk_id -> 원격배출 정보
+_REMOTE_VEND_SLOTS: Dict[int, _RemoteVendEntry] = {}
+
+
+def set_remote_vend_slot(kiosk_id: int, slot_id: int, ttl_seconds: int = 30) -> None:
+    """
+    관리자 페이지에서 원격배출 버튼을 눌렀을 때 호출.
+    - 같은 키오스크에 대해 여러 번 눌러도 마지막 슬롯만 유지.
+    - ttl_seconds 안에만 유효.
+    """
+    now = datetime.now(timezone.utc)
+    _REMOTE_VEND_SLOTS[kiosk_id] = {
+        "slot_id": slot_id,
+        "expires_at": now + timedelta(seconds=ttl_seconds),
+    }
+
+
+def pop_remote_vend_slot(kiosk_id: int) -> Optional[int]:
+    """
+    키오스크 remote-ping 시에 1회용으로 소비하는 명령.
+    - 유효시간이 지나면 자동 폐기하고 None 반환.
+    """
+    entry = _REMOTE_VEND_SLOTS.get(kiosk_id)
+    if not entry:
+        return None
+
+    now = datetime.now(timezone.utc)
+    if entry["expires_at"] < now:
+        # 만료된 명령 → 삭제 후 무시
+        _REMOTE_VEND_SLOTS.pop(kiosk_id, None)
+        return None
+
+    slot_id = entry["slot_id"]
+    _REMOTE_VEND_SLOTS.pop(kiosk_id, None)
+    return slot_id
+
 
 
 async def get_by_id(db: AsyncSession, kiosk_id: int) -> Optional[Kiosk]:
@@ -188,3 +239,4 @@ async def bump_config_version(db: AsyncSession, kiosk_id: int) -> None:
     kiosk.updated_at = datetime.now(timezone.utc)
 
     # 호출한 쪽에서 한 번에 commit 처리
+

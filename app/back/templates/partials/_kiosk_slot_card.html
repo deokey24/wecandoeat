@@ -79,9 +79,15 @@
 
   {# 맨 아래: 원격배출 버튼 (항상 카드 하단) #}
   <div class="mt-2">
-    <button type="button"
-            class="w-full text-[11px] px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700">
-      원격배출
-    </button>
+    <form method="post"
+          action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/remote-vend"
+          class="w-full"
+          onsubmit="return confirmRemoteVend(this.querySelector('button'))">
+      <button type="submit"
+              class="w-full text-[11px] px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700"
+              data-product-name="{{ s.product_name or '해당 상품' }}">
+        원격배출
+      </button>
+    </form>
   </div>
 </div>
