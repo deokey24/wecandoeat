@@ -9,49 +9,60 @@
      data-slot-product-id="{{ s.product_id or '' }}"
      data-kiosk-product-id="{{ s.kiosk_product_id or '' }}">
 
-  {# 상단: 번호 + 버튼들 
-     - 모바일: 번호 위 / 버튼 아래 (세로)
-     - PC: 번호 왼쪽 / 버튼 오른쪽 (가로) #}
+  {# 상단: 번호 + 버튼들
+     - 상품 배치된 경우: 수정(상품수정) + 비우기
+     - 미배치: 버튼 없음 #}
   <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
     <div class="text-[11px] md:text-xs font-semibold text-slate-700">
       {{ '%02d'|format(s.col) }}
     </div>
-    <div class="flex flex-col gap-1 md:flex-row md:items-center md:gap-1">
-      <button type="button"
-              class="text-[10px] md:text-[11px] px-2 py-0.5 rounded border text-slate-600 hover:bg-slate-50 whitespace-nowrap w-full md:w-auto js-open-slot-modal">
-        배치/수정
-      </button>
-      <form method="post"
-            action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/clear"
-            class="w-full md:w-auto"
-            onsubmit="return confirm('이 슬롯의 상품 배치를 해제하시겠습니까?');">
-        <button type="submit"
-                class="w-full md:w-auto text-[10px] md:text-[11px] px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 whitespace-nowrap">
-          비우기
+    <div class="flex flex-col gap-1 md:flex-row md:items-center md:gap-1"
+         data-role="slot-top-buttons">
+      {% if s.kiosk_product_id %}
+        <button type="button"
+                class="text-[10px] md:text-[11px] px-2 py-0.5 rounded border text-slate-600 hover:bg-slate-50 whitespace-nowrap w-full md:w-auto js-edit-slot-product">
+          수정
         </button>
-      </form>
+        <form method="post"
+              action="/kiosks/{{ kiosk.id }}/slots/{{ s.slot_id }}/clear"
+              class="w-full md:w-auto"
+              onsubmit="return confirm('이 슬롯의 상품 배치를 해제하시겠습니까?');">
+          <button type="submit"
+                  class="w-full md:w-auto text-[10px] md:text-[11px] px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 whitespace-nowrap">
+            비우기
+          </button>
+        </form>
+      {% endif %}
     </div>
   </div>
 
-  {# 가운데: 큰 이미지 + 상품명/가격 #}
+  {# 가운데: 이미지/배치하기 + 상품명/가격 #}
   <div class="flex flex-col items-center gap-2 mt-2 flex-1">
     <div class="w-20 h-20 md:w-24 md:h-24 rounded bg-slate-100 flex items-center justify-center overflow-hidden"
          data-role="slot-image-container">
-      {% if s.image_url %}
-        <img src="{{ s.image_url }}"
-             alt=""
-             class="w-full h-full object-contain"
-             data-role="slot-image">
+      {% if s.kiosk_product_id %}
+        {% if s.image_url %}
+          <img src="{{ s.image_url }}"
+               alt=""
+               class="w-full h-full object-contain"
+               data-role="slot-image">
+        {% else %}
+          <span class="text-[10px] text-slate-400"
+                data-role="slot-image-placeholder">
+            No Image
+          </span>
+        {% endif %}
       {% else %}
-        <span class="text-[10px] text-slate-400"
-              data-role="slot-image-placeholder">
-          No Image
-        </span>
+        {# 배치되지 않은 슬롯: No Image 대신 배치하기 버튼 #}
+        <button type="button"
+                class="px-2 py-1 rounded text-[11px] bg-blue-600 text-white hover:bg-blue-700 js-open-slot-modal">
+          배치하기
+        </button>
       {% endif %}
     </div>
 
     <div class="w-full">
-      {# 상품명: 줄바꿈 허용해서 최대한 안 잘리게 #}
+      {# 상품명 #}
       <div class="text-xs font-semibold text-slate-800 break-words"
            data-role="slot-product-name">
         {{ s.product_name or "미배치" }}

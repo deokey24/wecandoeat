@@ -12,7 +12,7 @@
       </h1>
       <p class="text-sm text-slate-500">
         지점: {{ kiosk.store.name }} /
-        코드: <span class="font-mono">{{ kiosk.code }}
+        코드: <span class="font-mono">{{ kiosk.code }}</span>
         설정 비밀번호: <span class="font-mono">{{ kiosk.kiosk_password }}</span>
         페어링코드: <span class="font-mono">{{ kiosk.pair_code_4 }}</span>
       </p>
@@ -31,7 +31,7 @@
         {% endif %}
       </p>
     </div>
-    <!-- 배치 모드 제거: 우측 상단 비워둠 (필요시 다른 버튼 추가 가능) -->
+    <!-- 우측 상단 여백 (추후 다른 버튼 추가 가능) -->
   </div>
 
   <!-- 슬롯 그리드: 층별 카드 -->
@@ -72,51 +72,53 @@
       </div>
     {% endfor %}
   </div>
-  <div class="mt-8">
-  <div class="flex items-center justify-between mb-3">
-    <h2 class="text-lg font-semibold">보호화면 이미지</h2>
-    <form action="/kiosks/{{ kiosk.id }}/screensaver/upload" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
-      <input type="file" name="file" accept="image/*"
-             class="text-xs border rounded px-2 py-1" required>
-      <button type="submit"
-              class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
-        이미지 추가
-      </button>
-    </form>
-  </div>
 
-  {% if screen_images %}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {% for img in screen_images %}
-        <div class="border rounded-lg overflow-hidden bg-slate-50">
-          <div class="aspect-[9/16] bg-slate-200 flex items-center justify-center">
-            <img src="{{ img.image_url }}"
-                 alt="screensaver {{ loop.index }}"
-                 class="w-full h-full object-cover">
-          </div>
-          <div class="flex items-center justify-between px-2 py-1.5 text-xs">
-            <span class="text-slate-600">
-              #{{ img.sort_order }}
-            </span>
-            <form action="/kiosks/{{ kiosk.id }}/screensaver/{{ img.id }}/delete" method="post"
-                  onsubmit="return confirm('이 이미지를 삭제하시겠습니까?');">
-              <button type="submit"
-                      class="text-red-600 hover:text-red-800">
-                삭제
-              </button>
-            </form>
-          </div>
-        </div>
-      {% endfor %}
+  <!-- 보호화면 이미지 영역 -->
+  <div class="mt-8">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-lg font-semibold">보호화면 이미지</h2>
+      <form action="/kiosks/{{ kiosk.id }}/screensaver/upload" method="post" enctype="multipart/form-data" class="flex items-center gap-2">
+        <input type="file" name="file" accept="image/*"
+               class="text-xs border rounded px-2 py-1" required>
+        <button type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+          이미지 추가
+        </button>
+      </form>
     </div>
-  {% else %}
-    <div class="border rounded-lg px-4 py-6 text-sm text-slate-500 bg-slate-50">
-      등록된 보호화면 이미지가 없습니다.<br>
-      상단의 <span class="font-semibold">[이미지 추가]</span> 버튼으로 이미지를 업로드하지 않으면
-      키오스크 앱에서는 기본 보호화면 이미지를 사용합니다.
-    </div>
-  {% endif %}
-</div>
+
+    {% if screen_images %}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% for img in screen_images %}
+          <div class="border rounded-lg overflow-hidden bg-slate-50">
+            <div class="aspect-[9/16] bg-slate-200 flex items-center justify-center">
+              <img src="{{ img.image_url }}"
+                   alt="screensaver {{ loop.index }}"
+                   class="w-full h-full object-cover">
+            </div>
+            <div class="flex items-center justify-between px-2 py-1.5 text-xs">
+              <span class="text-slate-600">
+                #{{ img.sort_order }}
+              </span>
+              <form action="/kiosks/{{ kiosk.id }}/screensaver/{{ img.id }}/delete" method="post"
+                    onsubmit="return confirm('이 이미지를 삭제하시겠습니까?');">
+                <button type="submit"
+                        class="text-red-600 hover:text-red-800">
+                  삭제
+                </button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="border rounded-lg px-4 py-6 text-sm text-slate-500 bg-slate-50">
+        등록된 보호화면 이미지가 없습니다.<br>
+        상단의 <span class="font-semibold">[이미지 추가]</span> 버튼으로 이미지를 업로드하지 않으면
+        키오스크 앱에서는 기본 보호화면 이미지를 사용합니다.
+      </div>
+    {% endif %}
+  </div>
 </div>
 
 <!-- SLOT ASSIGN MODAL -->
@@ -204,12 +206,14 @@
 </div>
 
 <script>
+  const kioskId = {{ kiosk.id }};
   const slotModal = document.getElementById("slot-modal");
   const slotForm = document.getElementById("slot-form");
   const slotIdInput = document.getElementById("slot_id_input");
   const slotInfoLabel = document.getElementById("slot_info_label");
 
   const productSelect = document.getElementById("product_select");
+  const productSearchInput = document.getElementById("product_search");
 
   /* 상품 선택 (우측 카드 클릭 시) */
   function selectProduct(id, element) {
@@ -221,7 +225,22 @@
     element.classList.add("ring", "ring-blue-500");
   }
 
-  /* 슬롯 모달 열기/초기화 */
+  /* 상품 검색 필터 */
+  function filterProductCards() {
+    if (!productSearchInput) return;
+    const q = productSearchInput.value.trim().toLowerCase();
+
+    document.querySelectorAll("#product_list .product-card").forEach(card => {
+      const name = (card.dataset.name || "").toLowerCase();
+      if (!q || name.includes(q)) {
+        card.classList.remove("hidden");
+      } else {
+        card.classList.add("hidden");
+      }
+    });
+  }
+
+  /* 슬롯 모달 열기/초기화 (배치하기 버튼, 기타 js-open-slot-modal 공통) */
   function attachSlotModalHandlers() {
     document.querySelectorAll(".js-open-slot-modal").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -239,6 +258,12 @@
         slotIdInput.value = slotId;
         slotInfoLabel.textContent = `${label} (보드코드: ${board})`;
 
+        // 기존 검색 초기화
+        if (productSearchInput) {
+          productSearchInput.value = "";
+          filterProductCards();
+        }
+
         // 기존 선택 해제
         document.querySelectorAll(".product-card")
           .forEach(c => c.classList.remove("ring", "ring-blue-500"));
@@ -253,8 +278,8 @@
 
         productSelect.value = productId;
 
-        // 🔹 AJAX용 JSON 엔드포인트로 action 설정
-        slotForm.action = `/kiosks/{{ kiosk.id }}/slots/${slotId}/assign-json`;
+        // AJAX용 JSON 엔드포인트로 action 설정
+        slotForm.action = `/kiosks/${kioskId}/slots/${slotId}/assign-json`;
 
         slotModal.classList.remove("hidden");
       });
@@ -270,15 +295,19 @@
     });
   }
 
-  //원격배출
+  // 원격배출 confirm
   function confirmRemoteVend(button) {
     const productName = button.getAttribute("data-product-name") || "해당 상품";
     return confirm(productName + "을(를) 원격배출 하겠습니까?");
   }
 
-  /* 슬롯에 배치된 상품 자체 수정 버튼 핸들러 (기존 로직 유지) */
+  /* 슬롯에 배치된 상품 자체 수정 버튼 핸들러 (수정 버튼) */
   function attachEditSlotProductHandlers() {
     document.querySelectorAll(".js-edit-slot-product").forEach(btn => {
+      // 중복 이벤트 방지 위해 한 번만 바인딩
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+
       btn.addEventListener("click", () => {
         const card = btn.closest("[data-slot-id]");
         if (!card) return;
@@ -289,7 +318,6 @@
           return;
         }
 
-        const kioskId = {{ kiosk.id }};
         window.location.href = `/kiosks/${kioskId}/products/${kioskProductId}/edit`;
       });
     });
@@ -332,88 +360,130 @@
           return;
         }
 
-      // 🔹 해당 슬롯 카드 DOM 업데이트
-      const slotId = data.slot_id;
-      const card = document.querySelector(`[data-slot-id="${slotId}"]`);
-      if (card) {
-        // data-* 업데이트
-        card.dataset.slotMax = data.stock.max_capacity;
-        card.dataset.slotStock = data.stock.current_stock;
-        card.dataset.slotLow = data.stock.low_stock_alarm;
-        card.dataset.slotProductId = data.product.product_id;
-        card.dataset.kioskProductId = data.product.kiosk_product_id;
+        // 🔹 해당 슬롯 카드 DOM 업데이트
+        const slotId = data.slot_id;
+        const card = document.querySelector(`[data-slot-id="${slotId}"]`);
+        if (card) {
+          // data-* 업데이트
+          card.dataset.slotMax = data.stock.max_capacity;
+          card.dataset.slotStock = data.stock.current_stock;
+          card.dataset.slotLow = data.stock.low_stock_alarm;
+          card.dataset.slotProductId = data.product.product_id;
+          card.dataset.kioskProductId = data.product.kiosk_product_id;
 
-        // 이름 / 가격 / 재고 텍스트 업데이트
-        const nameEl = card.querySelector("[data-role='slot-product-name']");
-        if (nameEl) {
-          nameEl.textContent = data.product.name;
-        }
-
-        const priceEl = card.querySelector("[data-role='slot-price']");
-        if (priceEl) {
-          if (data.product.price != null) {
-            priceEl.textContent = data.product.price.toLocaleString("ko-KR") + "원";
-          } else {
-            priceEl.textContent = "가격 정보 없음";
+          // 이름 / 가격 / 재고 텍스트 업데이트
+          const nameEl = card.querySelector("[data-role='slot-product-name']");
+          if (nameEl) {
+            nameEl.textContent = data.product.name;
           }
-        }
 
-        const stockEl = card.querySelector("[data-role='slot-stock']");
-        if (stockEl) {
-          const value = data.stock.current_stock ?? 0;
-          stockEl.textContent = value;
-
-          const stockWrapper = card.querySelector("[data-role='slot-stock-wrapper']");
-          const labelEl = card.querySelector("[data-role='stock-label']");
-
-          if (stockWrapper && labelEl) {
-            if (value === 0) {
-              // 품절 상태
-              stockWrapper.classList.add("text-red-500", "font-semibold");
-              stockWrapper.classList.remove("text-slate-600");
-              labelEl.textContent = "품절";
+          const priceEl = card.querySelector("[data-role='slot-price']");
+          if (priceEl) {
+            if (data.product.price != null) {
+              priceEl.textContent = data.product.price.toLocaleString("ko-KR") + "원";
             } else {
-              // 재고 있음
-              stockWrapper.classList.remove("text-red-500", "font-semibold");
-              stockWrapper.classList.add("text-slate-600");
-              labelEl.textContent = "재고";
+              priceEl.textContent = "가격 정보 없음";
             }
           }
-        }
 
+          const stockEl = card.querySelector("[data-role='slot-stock']");
+          if (stockEl) {
+            const value = data.stock.current_stock ?? 0;
+            stockEl.textContent = value;
 
-        // 🔹 이미지 업데이트 (없던 슬롯에도 새로 생성)
-        const imgUrl = data.product.image_url;
-        const container = card.querySelector("[data-role='slot-image-container']");
-        let imgEl = card.querySelector("[data-role='slot-image']");
+            const stockWrapper = card.querySelector("[data-role='slot-stock-wrapper']");
+            const labelEl = card.querySelector("[data-role='stock-label']");
 
-        if (imgUrl) {
-          if (!container) {
-            // 안전장치: 그래도 컨테이너가 없으면 img 태그만 갈아끼움
-            if (!imgEl) {
-              imgEl = document.createElement("img");
-              imgEl.setAttribute("data-role", "slot-image");
-              imgEl.alt = "";
-              imgEl.className = "w-full h-full object-contain";
-              imgEl.src = imgUrl;
-              card.appendChild(imgEl);
+            if (stockWrapper && labelEl) {
+              if (value === 0) {
+                // 품절 상태
+                stockWrapper.classList.add("text-red-500", "font-semibold");
+                stockWrapper.classList.remove("text-slate-600");
+                labelEl.textContent = "품절";
+              } else {
+                // 재고 있음
+                stockWrapper.classList.remove("text-red-500", "font-semibold");
+                stockWrapper.classList.add("text-slate-600");
+                labelEl.textContent = "재고";
+              }
+            }
+          }
+
+          // 🔹 이미지 업데이트 (없던 슬롯에도 새로 생성)
+          const imgUrl = data.product.image_url;
+          const container = card.querySelector("[data-role='slot-image-container']");
+          let imgEl = card.querySelector("[data-role='slot-image']");
+
+          if (imgUrl) {
+            if (!container) {
+              // 안전장치: 그래도 컨테이너가 없으면 img 태그만 갈아끼움
+              if (!imgEl) {
+                imgEl = document.createElement("img");
+                imgEl.setAttribute("data-role", "slot-image");
+                imgEl.alt = "";
+                imgEl.className = "w-full h-full object-contain";
+                imgEl.src = imgUrl;
+                card.appendChild(imgEl);
+              } else {
+                imgEl.src = imgUrl;
+              }
             } else {
-              imgEl.src = imgUrl;
+              // 컨테이너가 있으면 안쪽을 img 1개로 교체
+              const newImg = document.createElement("img");
+              newImg.setAttribute("data-role", "slot-image");
+              newImg.alt = "";
+              newImg.className = "w-full h-full object-contain";
+              newImg.src = imgUrl;
+
+              container.innerHTML = "";
+              container.appendChild(newImg);
             }
           } else {
-            // 컨테이너가 있으면 안쪽을 img 1개로 교체
-            const newImg = document.createElement("img");
-            newImg.setAttribute("data-role", "slot-image");
-            newImg.alt = "";
-            newImg.className = "w-full h-full object-contain";
-            newImg.src = imgUrl;
-
-            container.innerHTML = "";
-            container.appendChild(newImg);
+            // 이미지가 없는 상품으로 변경된 경우: placeholder 갱신
+            if (container) {
+              container.innerHTML = "";
+              const span = document.createElement("span");
+              span.setAttribute("data-role", "slot-image-placeholder");
+              span.className = "text-[10px] text-slate-400";
+              span.textContent = "No Image";
+              container.appendChild(span);
+            }
           }
-        }
-      }
 
+          // 🔹 상단 버튼(수정/비우기) 동적으로 구성
+          const topButtons = card.querySelector("[data-role='slot-top-buttons']");
+          if (topButtons) {
+            // 기존 내용 비우고 재구성
+            topButtons.innerHTML = "";
+
+            // 수정 버튼
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "text-[10px] md:text-[11px] px-2 py-0.5 rounded border text-slate-600 hover:bg-slate-50 whitespace-nowrap w-full md:w-auto js-edit-slot-product";
+            editBtn.textContent = "수정";
+            topButtons.appendChild(editBtn);
+
+            // 비우기 폼
+            const clearForm = document.createElement("form");
+            clearForm.method = "post";
+            clearForm.action = `/kiosks/${kioskId}/slots/${slotId}/clear`;
+            clearForm.className = "w-full md:w-auto";
+            clearForm.onsubmit = function() {
+              return confirm("이 슬롯의 상품 배치를 해제하시겠습니까?");
+            };
+
+            const clearBtn = document.createElement("button");
+            clearBtn.type = "submit";
+            clearBtn.className = "w-full md:w-auto text-[10px] md:text-[11px] px-2 py-0.5 rounded border border-red-200 text-red-500 hover:bg-red-50 whitespace-nowrap";
+            clearBtn.textContent = "비우기";
+
+            clearForm.appendChild(clearBtn);
+            topButtons.appendChild(clearForm);
+          }
+
+          // 새로 생성된 수정 버튼에 이벤트 바인딩
+          attachEditSlotProductHandlers();
+        }
 
         // 모달 닫기
         slotModal.classList.add("hidden");
@@ -431,8 +501,8 @@
 
   // 초기 바인딩
   document.addEventListener("DOMContentLoaded", () => {
-    attachSlotModalHandlers();
-    attachEditSlotProductHandlers();
+    attachSlotModalHandlers();       // 배치하기 버튼
+    attachEditSlotProductHandlers(); // 기존 수정 버튼들
     attachCloseModalHandlers();
     attachSlotFormAjaxSubmit();
   });
