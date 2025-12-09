@@ -1,12 +1,15 @@
 # app/back/services/vending_service.py
 from datetime import datetime
 
+from typing import List
+
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.product import Product
+from app.back.schemas.kiosk import InventoryItem
 
 
 async def get_kiosk_slots_grouped_by_row(db: AsyncSession, kiosk_id: int):
@@ -239,3 +242,33 @@ async def update_inventory_replace(
 
     await db.commit()
     return updated, skipped
+
+async def get_inventory_snapshot(
+    db: AsyncSession,
+    kiosk_id: int,
+) -> List[InventoryItem]:
+    """
+    특정 키오스크에 속한 모든 슬롯의 재고 조회.
+    """
+
+    result = await db.execute(
+        select(
+            VendingSlot.id,
+            VendingSlotProduct.current_stock,
+        )
+        .join(VendingSlotProduct, VendingSlotProduct.slot_id == VendingSlot.id)
+        .where(VendingSlot.kiosk_id == kiosk_id)
+    )
+
+    rows = result.all()
+
+    items: List[InventoryItem] = []
+    for slot_id, current_stock in rows:
+        items.append(
+            InventoryItem(
+                slot_id=slot_id,
+                current_stock=current_stock or 0,  # ✅ 필드명 맞춰주기
+            )
+        )
+
+    return items

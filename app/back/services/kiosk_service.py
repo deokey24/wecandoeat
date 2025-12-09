@@ -187,5 +187,4 @@ async def bump_config_version(db: AsyncSession, kiosk_id: int) -> None:
     kiosk.config_version = (kiosk.config_version or 0) + 1
     kiosk.updated_at = datetime.now(timezone.utc)
 
-    await db.commit()
-    await db.refresh(kiosk)
+    # 호출한 쪽에서 한 번에 commit 처리

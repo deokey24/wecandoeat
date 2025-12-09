@@ -3,7 +3,7 @@ from datetime import datetime
 import random
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,8 +18,12 @@ from app.back.models.product import Product
 from app.back.services import kiosk_service, user_service
 from app.back.models.kiosk_product import KioskProduct
 
+import time, logging
+
 templates = Jinja2Templates(directory="app/back/templates")
 router = APIRouter()
+
+perf_logger = logging.getLogger("perf.kiosk")  # 성능 로그용 로거
 
 async def generate_unique_pair_code_4(db: AsyncSession) -> str:
     for _ in range(50):  # 안전장치: 최대 50번 시도
@@ -293,12 +297,30 @@ async def kiosk_detail_page(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start = time.perf_counter()
+    perf_logger.info("kiosk_detail[%s]: start", kiosk_id)
+
     if not current_user:
+        perf_logger.info(
+            "kiosk_detail[%s]: no current_user (%.3fs)",
+            kiosk_id,
+            time.perf_counter() - start,
+        )
         return RedirectResponse("/login", status_code=303)
 
     # 🔹 권한 및 해당 키오스크 접근 가능 여부 확인
     kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    perf_logger.info(
+        "kiosk_detail[%s]: after ensure_kiosk_access (%.3fs)",
+        kiosk_id,
+        time.perf_counter() - start,
+    )
     if not kiosk:
+        perf_logger.info(
+            "kiosk_detail[%s]: forbidden (%.3fs)",
+            kiosk_id,
+            time.perf_counter() - start,
+        )
         return templates.TemplateResponse(
             "forbidden.html",
             {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
@@ -325,6 +347,12 @@ async def kiosk_detail_page(
     )
     result = await db.execute(stmt)
     rows = result.all()
+    perf_logger.info(
+        "kiosk_detail[%s]: after slot+vsp+kp query (rows=%d, %.3fs)",
+        kiosk_id,
+        len(rows),
+        time.perf_counter() - start,
+    )
 
     # 층(row)별로 묶기
     layers: dict[int, list[dict]] = {}
@@ -356,16 +384,34 @@ async def kiosk_detail_page(
         )
 
     sorted_layers = sorted(layers.items(), key=lambda x: x[0])
+    perf_logger.info(
+        "kiosk_detail[%s]: after building layers (layers=%d, %.3fs)",
+        kiosk_id,
+        len(sorted_layers),
+        time.perf_counter() - start,
+    )
 
     # 상품 선택 모달에서 사용할 '마스터 Product 목록'
     products = (await db.execute(select(Product))).scalars().all()
+    perf_logger.info(
+        "kiosk_detail[%s]: after loading products (count=%d, %.3fs)",
+        kiosk_id,
+        len(products),
+        time.perf_counter() - start,
+    )
 
     screen_images = sorted(
         kiosk.screen_images,
         key=lambda x: x.sort_order if x.sort_order is not None else 0,
     )
+    perf_logger.info(
+        "kiosk_detail[%s]: after loading screen_images (count=%d, %.3fs)",
+        kiosk_id,
+        len(screen_images),
+        time.perf_counter() - start,
+    )
 
-    return templates.TemplateResponse(
+    resp = templates.TemplateResponse(
         "kiosk_detail.html",
         {
             "request": request,
@@ -377,6 +423,12 @@ async def kiosk_detail_page(
             "screen_images": screen_images,
         },
     )
+    perf_logger.info(
+        "kiosk_detail[%s]: end (total %.3fs)",
+        kiosk_id,
+        time.perf_counter() - start,
+    )
+    return resp
     
 
 
@@ -453,10 +505,15 @@ async def kiosk_slot_clear(
 
     slot.max_capacity = 0
 
+    # 🔹 config_version 직접 증가
+    kiosk.config_version = (kiosk.config_version or 0) + 1
+    kiosk.updated_at = datetime.utcnow()
+
+    # 🔹 한 번만 commit
     await db.commit()
-    await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(f"/kiosks/{kiosk_id}", status_code=303)
+
 
 
 
@@ -476,12 +533,38 @@ async def kiosk_slot_assign(
     db: AsyncSession = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    start = time.perf_counter()
+    perf_logger.info(
+        "slot_assign[%s/%s]: start (product_id=%s)",
+        kiosk_id,
+        slot_id,
+        product_id,
+    )
+
     if not current_user:
+        perf_logger.info(
+            "slot_assign[%s/%s]: no current_user (%.3fs)",
+            kiosk_id,
+            slot_id,
+            time.perf_counter() - start,
+        )
         return RedirectResponse("/login", status_code=303)
 
     # 🔹 권한 확인
     kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    perf_logger.info(
+        "slot_assign[%s/%s]: after ensure_kiosk_access (%.3fs)",
+        kiosk_id,
+        slot_id,
+        time.perf_counter() - start,
+    )
     if not kiosk:
+        perf_logger.info(
+            "slot_assign[%s/%s]: forbidden (%.3fs)",
+            kiosk_id,
+            slot_id,
+            time.perf_counter() - start,
+        )
         return templates.TemplateResponse(
             "forbidden.html",
             {"request": request, "message": "해당 키오스크에 접근할 권한이 없습니다."},
@@ -490,6 +573,12 @@ async def kiosk_slot_assign(
 
     # 슬롯 존재 & 소속 확인
     slot = await db.get(VendingSlot, slot_id)
+    perf_logger.info(
+        "slot_assign[%s/%s]: after load slot (%.3fs)",
+        kiosk_id,
+        slot_id,
+        time.perf_counter() - start,
+    )
     if not slot or slot.kiosk_id != kiosk_id:
         return templates.TemplateResponse(
             "forbidden.html",
@@ -499,6 +588,12 @@ async def kiosk_slot_assign(
 
     # 마스터 Product 로드
     base_product = await db.get(Product, product_id)
+    perf_logger.info(
+        "slot_assign[%s/%s]: after load base_product (%.3fs)",
+        kiosk_id,
+        slot_id,
+        time.perf_counter() - start,
+    )
     if not base_product:
         return templates.TemplateResponse(
             "forbidden.html",
@@ -507,12 +602,169 @@ async def kiosk_slot_assign(
         )
 
     # 동일 키오스크 + 동일 base_product 로 이미 생성된 스냅샷이 있는지 확인
-    stmt = select(KioskProduct).where(
-        KioskProduct.kiosk_id == kiosk_id,
-        KioskProduct.base_product_id == base_product.id,
+    stmt = (
+        select(KioskProduct)
+        .where(
+            KioskProduct.kiosk_id == kiosk_id,
+            KioskProduct.base_product_id == base_product.id,
+        )
+        .limit(1)
     )
     result = await db.execute(stmt)
-    kiosk_product = result.scalar_one_or_none()
+    kiosk_product = result.scalars().first()
+    perf_logger.info(
+        "slot_assign[%s/%s]: after kiosk_product query (found=%s, %.3fs)",
+        kiosk_id,
+        slot_id,
+        bool(kiosk_product),
+        time.perf_counter() - start,
+    )
+
+    # 없으면 새로 스냅샷 생성
+    if kiosk_product is None:
+        kiosk_product = KioskProduct(
+            kiosk_id=kiosk_id,
+            base_product_id=base_product.id,
+            name=base_product.name,
+            code=base_product.code,
+            category=base_product.category,
+            price=base_product.price,
+            is_adult_only=base_product.is_adult_only,
+            image_url=base_product.image_url,
+            detail_url=base_product.detail_url,
+            description=base_product.description,
+            is_active=base_product.is_active,
+        )
+        db.add(kiosk_product)
+        await db.flush()  # id 확보
+        perf_logger.info(
+            "slot_assign[%s/%s]: created new kiosk_product(id=%s) (%.3fs)",
+            kiosk_id,
+            slot_id,
+            kiosk_product.id,
+            time.perf_counter() - start,
+        )
+
+    # 슬롯 용량 갱신
+    slot.max_capacity = max_capacity
+    slot.updated_at = datetime.utcnow()
+
+    # 슬롯-상품 매핑(vending_slot_products)
+    vsp_stmt = select(VendingSlotProduct).where(
+        VendingSlotProduct.slot_id == slot_id
+    )
+    vsp_result = await db.execute(vsp_stmt)
+    vsp = vsp_result.scalar_one_or_none()
+    perf_logger.info(
+        "slot_assign[%s/%s]: after VSP query (exists=%s, %.3fs)",
+        kiosk_id,
+        slot_id,
+        bool(vsp),
+        time.perf_counter() - start,
+    )
+
+    if vsp is None:
+        vsp = VendingSlotProduct(
+            slot_id=slot_id,
+            kiosk_product_id=kiosk_product.id,
+            current_stock=current_stock,
+            low_stock_alarm=low_stock_alarm,
+            is_active=True,
+        )
+        db.add(vsp)
+    else:
+        vsp.kiosk_product_id = kiosk_product.id
+        vsp.current_stock = current_stock
+        vsp.low_stock_alarm = low_stock_alarm
+        vsp.is_active = True
+
+    # 🔹 이 키오스크의 config_version 직접 올리기
+    kiosk.config_version = (kiosk.config_version or 0) + 1
+    kiosk.updated_at = datetime.utcnow()
+
+    # 🔹 한 번만 commit
+    await db.commit()
+    perf_logger.info(
+        "slot_assign[%s/%s]: after single commit (%.3fs)",
+        kiosk_id,
+        slot_id,
+        time.perf_counter() - start,
+    )
+
+    resp = RedirectResponse(
+        f"/kiosks/{kiosk_id}?mode=edit",
+        status_code=303,
+    )
+    perf_logger.info(
+        "slot_assign[%s/%s]: end (total %.3fs)",
+        kiosk_id,
+        slot_id,
+        time.perf_counter() - start,
+    )
+    return resp
+
+
+@router.post("/kiosks/{kiosk_id}/slots/{slot_id}/assign-json")
+async def kiosk_slot_assign_json(
+    kiosk_id: int,
+    slot_id: int,
+    product_id: int = Form(...),         # 마스터 Product ID
+    max_capacity: int = Form(0),
+    current_stock: int = Form(0),
+    low_stock_alarm: int = Form(0),
+    request: Request = None,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    start = time.perf_counter()
+    perf_logger.info(
+        "slot_assign_json[%s/%s]: start (product_id=%s)",
+        kiosk_id,
+        slot_id,
+        product_id,
+    )
+
+    if not current_user:
+        return JSONResponse(
+            {"ok": False, "error": "로그인이 필요합니다."},
+            status_code=401,
+        )
+
+    # 🔹 권한 확인 (kiosk 객체 한 번 로드)
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
+        return JSONResponse(
+            {"ok": False, "error": "해당 키오스크에 접근할 권한이 없습니다."},
+            status_code=403,
+        )
+
+    # 슬롯 존재 & 소속 확인
+    slot = await db.get(VendingSlot, slot_id)
+    if not slot or slot.kiosk_id != kiosk_id:
+        return JSONResponse(
+            {"ok": False, "error": "존재하지 않는 슬롯입니다."},
+            status_code=404,
+        )
+
+    # 마스터 Product 로드
+    base_product = await db.get(Product, product_id)
+    if not base_product:
+        return JSONResponse(
+            {"ok": False, "error": "존재하지 않는 상품입니다."},
+            status_code=404,
+        )
+
+    # 동일 키오스크 + 동일 base_product 로 이미 생성된 스냅샷이 있는지 확인
+    stmt = (
+        select(KioskProduct)
+        .where(
+            KioskProduct.kiosk_id == kiosk_id,
+            KioskProduct.base_product_id == base_product.id,
+        )
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    kiosk_product = result.scalars().first()
 
     # 없으면 새로 스냅샷 생성
     if kiosk_product is None:
@@ -558,13 +810,41 @@ async def kiosk_slot_assign(
         vsp.low_stock_alarm = low_stock_alarm
         vsp.is_active = True
 
-    await db.commit()
-    await kiosk_service.bump_config_version(db, kiosk_id)
+    # 🔹 config_version 직접 증가 (이미 kiosk를 들고 있으므로)
+    kiosk.config_version = (kiosk.config_version or 0) + 1
+    kiosk.updated_at = datetime.utcnow()
 
-    return RedirectResponse(
-        f"/kiosks/{kiosk_id}?mode=edit",
-        status_code=303,
+    await db.commit()
+    perf_logger.info(
+        "slot_assign_json[%s/%s]: after commit (%.3fs)",
+        kiosk_id,
+        slot_id,
+        time.perf_counter() - start,
     )
+
+    # 프론트에서 슬롯 카드 업데이트에 쓸 데이터만 반환
+    return JSONResponse(
+        {
+            "ok": True,
+            "slot_id": slot_id,
+            "kiosk_id": kiosk_id,
+            "product": {
+                "kiosk_product_id": kiosk_product.id,
+                "product_id": base_product.id,
+                "name": kiosk_product.name,
+                "price": kiosk_product.price,
+                "image_url": kiosk_product.image_url,
+                "is_adult_only": kiosk_product.is_adult_only,
+            },
+            "stock": {
+                "current_stock": current_stock,
+                "max_capacity": max_capacity,
+                "low_stock_alarm": low_stock_alarm,
+            },
+        }
+    )
+
+
 
 
 @router.post("/kiosks/{kiosk_id}/screensaver/upload")
@@ -608,11 +888,16 @@ async def kiosk_screensaver_upload(
         is_active=True,
     )
     db.add(new_img)
+
+    # 🔹 config_version 직접 증가
+    kiosk.config_version = (kiosk.config_version or 0) + 1
+    kiosk.updated_at = datetime.utcnow()
+
+    # 🔹 한 번만 commit
     await db.commit()
 
-    await kiosk_service.bump_config_version(db, kiosk_id)
-
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
+
 
 
 @router.post("/kiosks/{kiosk_id}/screensaver/{image_id}/delete")
@@ -644,11 +929,16 @@ async def kiosk_screensaver_delete(
     img = img_result.scalar_one_or_none()
     if img:
         await db.delete(img)
+
+        # 🔹 config_version 직접 증가
+        kiosk.config_version = (kiosk.config_version or 0) + 1
+        kiosk.updated_at = datetime.utcnow()
+
+        # 🔹 한 번만 commit
         await db.commit()
 
-        await kiosk_service.bump_config_version(db, kiosk_id)
-
     return RedirectResponse(f"/kiosks/{kiosk_id}?mode=view", status_code=303)
+
 
 # ---------------------------------------------------------------------------
 # 슬롯에 배치된 "키오스크 전용 상품" 수정 페이지
@@ -758,8 +1048,12 @@ async def kiosk_product_edit_submit(
     kp.image_url = image_url
     kp.detail_url = detail_url
 
+    # 🔹 config_version 직접 증가
+    kiosk.config_version = (kiosk.config_version or 0) + 1
+    kiosk.updated_at = datetime.utcnow()
+
+    # 🔹 한 번만 commit
     await db.commit()
-    await kiosk_service.bump_config_version(db, kiosk_id)
 
     return RedirectResponse(
         f"/kiosks/{kiosk_id}?mode=edit",

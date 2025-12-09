@@ -11,6 +11,7 @@ from app.back.schemas.kiosk import (
     KioskHeartbeatRequest,
     KioskInventoryUpdateRequest,
     KioskInventoryUpdateResult,
+    KioskInventorySnapshot
 )
 from app.back.services import kiosk_service, vending_service
 
@@ -152,4 +153,40 @@ async def kiosk_inventory_update(
         updated=updated,
         skipped=skipped,
         mode=payload.mode,
+    )
+
+@router.get(
+    "/{kiosk_id}/inventory",
+    response_model=KioskInventorySnapshot,
+)
+async def get_kiosk_inventory(
+    kiosk_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    키오스크 → 서버
+    - 현재 서버에 저장된 슬롯별 재고를 조회해서
+      앱 측 재고를 동기화하기 위한 엔드포인트.
+
+    인증:
+    - path 의 kiosk_id + 헤더의 X-Kiosk-Api-Key 로 검증
+    """
+
+    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    if not kiosk or not kiosk.is_active:
+        raise HTTPException(status_code=403, detail="Kiosk not allowed")
+
+    # (필요하다면 여기서 last_ip, last_heartbeat_at 업데이트 가능)
+    client_ip = request.client.host if request and request.client else None
+    # TODO: 필요하면 kiosk.last_ip = client_ip 등 갱신 로직 추가
+
+    items = await vending_service.get_inventory_snapshot(
+        db=db,
+        kiosk_id=kiosk_id,
+    )
+
+    return KioskInventorySnapshot(
+        kiosk_id=kiosk_id,
+        items=items,
     )

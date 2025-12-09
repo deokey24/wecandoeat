@@ -23,12 +23,20 @@ from .routers import (
     web_public_files,
 )
 
+import logging
+
 BASE_DIR = Path(__file__).resolve().parent
 
 app = FastAPI(
     title="Wecandoit Admin",
     docs_url="/api/docs",      # 필요 없으면 None 으로 바꿔도 됨
     redoc_url="/api/redoc",
+)
+
+# 로깅
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s] %(levelname)s %(name)s - %(message)s",
 )
 
 # 세션 (로그인 상태 유지용)

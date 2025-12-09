@@ -112,3 +112,10 @@ class KioskInventoryUpdateResult(BaseModel):
     updated: int
     skipped: int
     mode: str
+
+class KioskInventorySnapshot(BaseModel):
+    """
+    키오스크 전체 슬롯 재고 조회 응답
+    """
+    kiosk_id: int
+    items: List[InventoryItem]
