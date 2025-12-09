@@ -31,7 +31,6 @@
         {% endif %}
       </p>
     </div>
-    <!-- 우측 상단 여백 (추후 다른 버튼 추가 가능) -->
   </div>
 
   <!-- 슬롯 그리드: 층별 카드 -->
@@ -130,20 +129,34 @@
               shadow-lg px-4 py-4 sm:px-6 sm:py-5
               space-y-4 max-h-[90vh] overflow-y-auto">
 
-    <!-- 헤더 -->
-    <div class="flex items-center justify-between mb-1">
-      <div>
-        <h2 class="text-base sm:text-lg font-semibold">슬롯 상품 배치</h2>
-        <div class="text-xs text-slate-500 mt-1" id="slot_info_label"></div>
-      </div>
-      <button type="button"
-              class="text-xs sm:text-sm text-slate-400 hover:text-slate-600 js-close-slot-modal">
-        닫기
-      </button>
-    </div>
-
+    <!-- ✅ 폼 전체 -->
     <form method="post" id="slot-form" class="space-y-4">
+      <!-- 헤더: 제목 + 슬롯 정보 + (저장 / 닫기) -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base sm:text-lg font-semibold">슬롯 상품 배치</h2>
+          <div class="text-xs text-slate-500 mt-1" id="slot_info_label"></div>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- 닫기 옆 저장 -->
+          <button type="submit"
+                  class="px-3 py-1.5 text-xs sm:text-sm rounded-lg
+                         bg-blue-600 text-white hover:bg-blue-700">
+            저장
+          </button>
+          <button type="button"
+                  class="text-xs sm:text-sm text-slate-400 hover:text-slate-600 js-close-slot-modal">
+            닫기
+          </button>
+        </div>
+      </div>
+
       <input type="hidden" name="slot_id" id="slot_id_input">
+
+      <!-- ✅ 재고 안내 문구를 상품 선택 라벨 위로 이동 -->
+      <div class="p-3 bg-slate-50 border rounded-lg text-xs sm:text-sm text-slate-600">
+        재고는 키오스크 기기에서만 설정할 수 있습니다.
+      </div>
 
       <!-- 상품 검색 -->
       <div class="space-y-2">
@@ -156,10 +169,10 @@
                oninput="filterProductCards()">
       </div>
 
-      <!-- 상품 리스트 (이미지 포함) -->
+      <!-- ✅ 검색창 아래로만 스크롤 + 고정 높이 -->
       <div id="product_list"
-           class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 max-h-120 overflow-y-auto pr-1">
-
+           class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3
+                  max-h-300 overflow-y-auto pr-1">
         {% for p in products %}
         <div class="product-card border rounded-lg cursor-pointer p-2
                     hover:border-blue-500 transition-all"
@@ -182,25 +195,10 @@
           </div>
         </div>
         {% endfor %}
-
       </div>
 
       <!-- 실제 선택 값 -->
       <input type="hidden" name="product_id" id="product_select">
-
-      <!-- 재고 설정 안내 -->
-      <div class="p-3 bg-slate-50 border rounded-lg text-xs sm:text-sm text-slate-600">
-        재고는 키오스크 기기에서만 설정할 수 있습니다.
-      </div>
-
-      <!-- 버튼 -->
-      <div class="pt-1 flex flex-col sm:flex-row justify-end gap-2">
-        <button type="submit"
-                class="w-full sm:w-auto px-3 py-2 text-xs sm:text-sm rounded-lg
-                       bg-blue-600 text-white hover:bg-blue-700">
-          저장
-        </button>
-      </div>
     </form>
   </div>
 </div>
@@ -258,7 +256,7 @@
         slotIdInput.value = slotId;
         slotInfoLabel.textContent = `${label} (보드코드: ${board})`;
 
-        // 기존 검색 초기화
+        // 검색어 초기화 + 필터 리셋
         if (productSearchInput) {
           productSearchInput.value = "";
           filterProductCards();
@@ -304,7 +302,6 @@
   /* 슬롯에 배치된 상품 자체 수정 버튼 핸들러 (수정 버튼) */
   function attachEditSlotProductHandlers() {
     document.querySelectorAll(".js-edit-slot-product").forEach(btn => {
-      // 중복 이벤트 방지 위해 한 번만 바인딩
       if (btn.dataset.bound === "1") return;
       btn.dataset.bound = "1";
 
@@ -409,14 +406,13 @@
             }
           }
 
-          // 🔹 이미지 업데이트 (없던 슬롯에도 새로 생성)
+          // 🔹 이미지 업데이트
           const imgUrl = data.product.image_url;
           const container = card.querySelector("[data-role='slot-image-container']");
           let imgEl = card.querySelector("[data-role='slot-image']");
 
           if (imgUrl) {
             if (!container) {
-              // 안전장치: 그래도 컨테이너가 없으면 img 태그만 갈아끼움
               if (!imgEl) {
                 imgEl = document.createElement("img");
                 imgEl.setAttribute("data-role", "slot-image");
@@ -428,7 +424,6 @@
                 imgEl.src = imgUrl;
               }
             } else {
-              // 컨테이너가 있으면 안쪽을 img 1개로 교체
               const newImg = document.createElement("img");
               newImg.setAttribute("data-role", "slot-image");
               newImg.alt = "";
@@ -439,7 +434,7 @@
               container.appendChild(newImg);
             }
           } else {
-            // 이미지가 없는 상품으로 변경된 경우: placeholder 갱신
+            // 이미지 없는 상품으로 변경
             if (container) {
               container.innerHTML = "";
               const span = document.createElement("span");
@@ -450,10 +445,9 @@
             }
           }
 
-          // 🔹 상단 버튼(수정/비우기) 동적으로 구성
+          // 🔹 상단 버튼(수정/비우기) 동적 구성
           const topButtons = card.querySelector("[data-role='slot-top-buttons']");
           if (topButtons) {
-            // 기존 내용 비우고 재구성
             topButtons.innerHTML = "";
 
             // 수정 버튼
@@ -491,6 +485,7 @@
         console.error(err);
         alert("네트워크 오류로 슬롯 배치에 실패했습니다.");
       } finally {
+        const submitBtn = slotForm.querySelector("button[type='submit']");
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = "저장";
