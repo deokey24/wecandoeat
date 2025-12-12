@@ -12,7 +12,8 @@ from app.back.schemas.kiosk import (
     KioskHeartbeatRequest,
     KioskInventoryUpdateRequest,
     KioskInventoryUpdateResult,
-    KioskInventorySnapshot
+    KioskInventorySnapshot,
+    KioskEventLogBatch
 )
 from app.back.services import kiosk_service, vending_service
 
@@ -230,3 +231,52 @@ async def kiosk_remote_ping(
         remote_vend_slot_id=remote_vend_slot_id,
         server_time=datetime.now(timezone.utc).isoformat(),
     )
+
+# =============================
+#  결제/배출 이벤트 로그 업로드
+# =============================
+@router.post("/{kiosk_id}/logs")
+async def kiosk_logs_upload(
+    kiosk_id: int,
+    payload: KioskEventLogBatch,
+    db: AsyncSession = Depends(get_db),
+    x_kiosk_api_key: str = Header(default=None),
+):
+    """
+    키오스크(Android) → 서버
+    결제/배출(payAndVend) 이벤트 로그 배치 업로드
+
+    Body 예시:
+    {
+      "device_uuid": "android-uuid-or-serial",
+      "app_version": "1.0.3",
+      "logs": [
+        {
+          "event_type": "PAYMENT",
+          "event_name": "PAY_START",
+          "level": "INFO",
+          "message": "결제/배출 시작",
+          "label_slot": 13,
+          "slot_label": "A03",
+          "price_won": 20000,
+          "paid_won": null,
+          "reason": null,
+          "occurred_at": "2025-02-18T12:34:56.123+09:00"
+        },
+        ...
+      ]
+    }
+    """
+    kiosk = await kiosk_service.get_by_id(db, kiosk_id)
+    if not kiosk or not kiosk.is_active:
+        raise HTTPException(status_code=403, detail="Kiosk not allowed")
+
+    if not x_kiosk_api_key or kiosk.api_key != x_kiosk_api_key:
+        raise HTTPException(status_code=401, detail="Invalid kiosk api key")
+
+    if not payload.logs:
+        raise HTTPException(status_code=400, detail="logs is empty")
+
+    saved = await kiosk_service.save_kiosk_event_logs(db, kiosk, payload)
+
+    return {"ok": True, "saved": saved}

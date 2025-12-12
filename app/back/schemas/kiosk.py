@@ -119,3 +119,28 @@ class KioskInventorySnapshot(BaseModel):
     """
     kiosk_id: int
     items: List[InventoryItem]
+
+# ============================
+#  결제/배출 이벤트 로그
+# ============================
+class KioskEventLogItem(BaseModel):
+    event_type: str                        # "PAYMENT"
+    event_name: str                        # PAY_START / PAY_VEND_OK / PAY_VEND_FAIL
+    level: str                             # INFO / WARN / ERROR
+    message: Optional[str] = None
+
+    label_slot: Optional[int] = None       # 1~80
+    slot_label: Optional[str] = None       # "A03"
+
+    price_won: Optional[int] = None        # 원 단위
+    paid_won: Optional[int] = None         # 원 단위
+
+    reason: Optional[str] = None           # 실패 사유 코드
+
+    occurred_at: datetime                  # 단말 기준 시각 (ISO8601 → datetime 자동 파싱)
+
+
+class KioskEventLogBatch(BaseModel):
+    device_uuid: Optional[str] = None
+    app_version: Optional[str] = None
+    logs: List[KioskEventLogItem]

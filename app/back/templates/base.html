@@ -91,6 +91,18 @@
           <span>권한관리</span>
         </a>
         {% endif %}
+        {% if role == 1 %}
+        <a href="/kiosk-logs"
+           class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full
+                  {% if path.startswith('/kiosk-logs') %}
+                    bg-blue-50 text-blue-600
+                  {% else %}
+                    text-slate-700 hover:bg-slate-50
+                  {% endif %}">
+          <span class="w-5 text-center">🧾</span>
+          <span>결제/배출 로그</span>
+        </a>
+        {% endif %}
 
         <a href="/kiosks"
            class="flex items-center gap-2 px-4 py-2 rounded-md md:rounded-r-full

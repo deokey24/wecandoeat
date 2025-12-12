@@ -21,6 +21,7 @@ from .routers import (
     api_qr_auth,
     web_qr_auth,
     web_public_files,
+    web_kiosk_logs
 )
 
 import logging
@@ -74,6 +75,7 @@ app.include_router(web_sales.router)
 app.include_router(api_qr_auth.router)
 app.include_router(web_qr_auth.router)
 app.include_router(web_public_files.router)
+app.include_router(web_kiosk_logs.router)
 
 
 # 헬스체크 (Render용 포함)

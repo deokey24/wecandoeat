@@ -6,14 +6,14 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, TypedDict
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.back.models.kiosk import Kiosk, KioskStatusLog
+from app.back.models.kiosk import Kiosk, KioskStatusLog, KioskEventLog
 from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.kiosk_product import KioskProduct  # 🔁 Product 대신 KioskProduct
-from app.back.schemas.kiosk import KioskConfig, SlotConfig
+from app.back.schemas.kiosk import KioskConfig, SlotConfig, KioskEventLogBatch
 
 
 
@@ -28,6 +28,9 @@ class _RemoteVendEntry(TypedDict):
 
 # kiosk_id -> 원격배출 정보
 _REMOTE_VEND_SLOTS: Dict[int, _RemoteVendEntry] = {}
+
+# 로그TTL
+LOG_RETENTION_DAYS = 3
 
 
 def set_remote_vend_slot(kiosk_id: int, slot_id: int, ttl_seconds: int = 30) -> None:
@@ -239,4 +242,54 @@ async def bump_config_version(db: AsyncSession, kiosk_id: int) -> None:
     kiosk.updated_at = datetime.now(timezone.utc)
 
     # 호출한 쪽에서 한 번에 commit 처리
+
+
+async def save_kiosk_event_logs(
+    db: AsyncSession,
+    kiosk: Kiosk,
+    batch: KioskEventLogBatch,
+    keep_days: int = LOG_RETENTION_DAYS,
+) -> int:
+    """
+    결제/배출(payAndVend) 이벤트 로그 배치 저장 + 3일 TTL 삭제
+    """
+    now = datetime.now(timezone.utc)
+
+    if not batch.logs:
+        return 0
+
+    logs_to_add: list[KioskEventLog] = []
+
+    for item in batch.logs:
+        log = KioskEventLog(
+            kiosk_id=kiosk.id,
+            event_type=item.event_type,
+            event_name=item.event_name,
+            level=item.level,
+            message=item.message,
+            label_slot=item.label_slot,
+            slot_label=item.slot_label,
+            price_won=item.price_won,
+            paid_won=item.paid_won,
+            reason=item.reason,
+            device_uuid=batch.device_uuid,
+            app_version=batch.app_version,
+            occurred_at=item.occurred_at,
+        )
+        logs_to_add.append(log)
+
+    db.add_all(logs_to_add)
+
+    # 3일 이전 로그 삭제 (created_at 기준)
+    cutoff = now - timedelta(days=keep_days)
+    await db.execute(
+        delete(KioskEventLog)
+        .where(KioskEventLog.kiosk_id == kiosk.id)
+        .where(KioskEventLog.created_at < cutoff)
+    )
+
+    await db.commit()
+
+    return len(logs_to_add)
+
 
