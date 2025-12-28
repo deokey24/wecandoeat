@@ -33,6 +33,14 @@ class KioskProduct(Base):
 
     # 실제 키오스크에서 사용하는 값들
     name = Column(String(200), nullable=False)
+    # 다국어 상품명 (영/중/일)
+    name_en = Column(String(200))
+    name_zh = Column(String(200))
+    name_ja = Column(String(200))
+
+    # 번역 작업 상태 (배치/관리자 버튼에서 공통 사용)
+    name_i18n_status = Column(String(50))
+    name_i18n_updated_at = Column(DateTime)
     code = Column(String(50))
     category = Column(String(50))
     price = Column(Integer, nullable=False)

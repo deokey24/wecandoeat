@@ -27,6 +27,9 @@ class SlotConfig(BaseModel):
     # 매핑된 상품 정보 (없으면 None)
     product_id: Optional[int]
     product_name: Optional[str]
+    product_name_en: Optional[str] = None
+    product_name_zh: Optional[str] = None
+    product_name_ja: Optional[str] = None
     price: Optional[int]
 
     # 성인 상품 여부

@@ -182,6 +182,9 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
                     # 상품 기본 정보 (이전에 Product에서 가져오던 필드들을 KioskProduct에서 그대로 사용)
                     product_id=kp.id,          # ← 앱에서 쓰는 ID (이제 kiosk_product.id)
                     product_name=kp.name,
+                    product_name_en=kp.name_en,
+                    product_name_zh=kp.name_zh,
+                    product_name_ja=kp.name_ja,
                     price=kp.price,
 
                     # 성인 여부
@@ -209,7 +212,11 @@ async def build_config(db: AsyncSession, kiosk: Kiosk) -> KioskConfig:
 
                     product_id=None,
                     product_name=None,
+                    product_name_en=None,
+                    product_name_zh=None,
+                    product_name_ja=None,
                     price=None,
+
                     is_adult_only=None,
                     image_url=None,
                     detail_image_url=None,

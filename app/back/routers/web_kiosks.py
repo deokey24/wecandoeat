@@ -1,5 +1,6 @@
 # app/back/routers/web_kiosks.py
 from datetime import datetime
+import os
 import random
 
 from fastapi import APIRouter, Depends, Form, Request, UploadFile, File, HTTPException
@@ -17,6 +18,9 @@ from app.back.models.vending import VendingSlot, VendingSlotProduct
 from app.back.models.product import Product
 from app.back.services import kiosk_service, user_service
 from app.back.models.kiosk_product import KioskProduct
+
+from openai import AsyncOpenAI
+from app.back.services.kiosk_product_i18n import translate_name_i18n
 
 import time, logging
 
@@ -986,6 +990,9 @@ async def kiosk_product_edit_submit(
     kiosk_product_id: int,
     request: Request,
     name: str = Form(...),
+    name_en: str | None = Form(None),
+    name_zh: str | None = Form(None),
+    name_ja: str | None = Form(None),
     price: int = Form(...),
     code: str | None = Form(None),
     category: str | None = Form(None),
@@ -1039,6 +1046,9 @@ async def kiosk_product_edit_submit(
 
     # ── 4) 나머지 필드 업데이트
     kp.name = name
+    kp.name_en = (name_en or "").strip() or None
+    kp.name_zh = (name_zh or "").strip() or None
+    kp.name_ja = (name_ja or "").strip() or None
     kp.price = price
     kp.code = code or None
     kp.category = category or None
@@ -1058,6 +1068,62 @@ async def kiosk_product_edit_submit(
     return RedirectResponse(
         f"/kiosks/{kiosk_id}?mode=edit",
         status_code=303,
+    )
+
+
+# ---------------------------------------------------------------------------
+# 키오스크 상품명 다국어 자동번역 (관리자 화면 버튼용)
+# ---------------------------------------------------------------------------
+@router.post("/kiosks/{kiosk_id}/products/{kiosk_product_id}/translate-name")
+async def kiosk_product_translate_name(
+    kiosk_id: int,
+    kiosk_product_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    관리자 수정 화면에서 '자동번역' 버튼을 눌렀을 때 호출.
+    - 권한/소속 체크
+    - name(또는 source_name) 기준으로 en/zh/ja 번역 결과를 JSON으로 반환
+
+    Body(JSON): {"source_name": "..."} (선택)
+    Response(JSON): {"ok": true, "name_en": "...", "name_zh": "...", "name_ja": "..."}
+    """
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    kiosk = await ensure_kiosk_access(db, kiosk_id, current_user)
+    if not kiosk:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    kp = await db.get(KioskProduct, kiosk_product_id)
+    if not kp or kp.kiosk_id != kiosk_id:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    source_name = (payload.get("source_name") or kp.name or "").strip()
+    if not source_name:
+        return JSONResponse({"ok": True, "name_en": "", "name_zh": "", "name_ja": ""})
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY is not set")
+
+    client = AsyncOpenAI(api_key=api_key)
+    out = await translate_name_i18n(client, source_name)
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "name_en": out.en,
+            "name_zh": out.zh,
+            "name_ja": out.ja,
+        }
     )
 
 
